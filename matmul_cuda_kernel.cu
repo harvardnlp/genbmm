@@ -3,6 +3,9 @@
 #include <cuda_runtime.h>
 #include <vector>
 #include <iostream>
+
+#include <curand.h>
+#include <curand_kernel.h>
 namespace {
 
 template <typename scalar_t>
@@ -62,6 +65,52 @@ __global__ void max_cuda_forward_kernel(
       }
       out[n][row][col] = m;
       indices[n][row][col] = ind;
+  }
+}
+
+template <typename scalar_t>
+__global__ void sample_cuda_forward_kernel(
+    const torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> a,
+    const torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> b,
+    const torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> rand,
+    torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> out,
+    torch::PackedTensorAccessor32<int,3,torch::RestrictPtrTraits> indices,
+    const int in_size,
+    const int a_size,
+    const int b_size
+    ) {
+
+  const int n = blockIdx.z;
+  const int row = threadIdx.x + blockIdx.x * blockDim.x;
+  const int col = threadIdx.y + blockIdx.y * blockDim.y;
+  scalar_t val = 0.0;
+  scalar_t m = -1e9;
+  int ind = -1;
+  if (row < a_size && col < b_size) {
+
+      for (int i = 0; i < in_size; ++i) {
+         scalar_t v = a[n][row][i] + b[n][i][col];
+         if (v > m) {
+             m = v;
+         }
+      }
+      for (int i = 0; i < in_size; ++i) {
+         scalar_t v = a[n][row][i] + b[n][i][col];
+         val += exp(v - m);
+      }
+      out[n][row][col] = log(val) + m;
+
+      scalar_t total = 0.0;
+      auto r = rand[n][row][col];
+      for (int i = 0; i < in_size; ++i) {
+         scalar_t v = a[n][row][i] + b[n][i][col] - out[n][row][col];
+         if (total < r && total + exp(v) > r ){
+             indices[n][row][col] = ind;
+             break;
+         }
+         total += exp(v);
+      }
+
   }
 }
 
@@ -148,6 +197,7 @@ __global__ void max_cuda_backward_kernel_A(
       grad_a[n][row][col] = val;
   }
 }
+
 template <typename scalar_t>
 __global__ void max_cuda_backward_kernel_B(
     torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> grad_b,
@@ -173,6 +223,7 @@ __global__ void max_cuda_backward_kernel_B(
       grad_b[n][row][col] = val;
   }
 }
+
 
 
 } // namespace
@@ -226,7 +277,24 @@ std::vector<torch::Tensor> matmul_cuda_forward(
                       in_size, a_size, b_size);
               } ) );
       return {out, indices};
+  } else if (mode == 2) {
+      auto options2 = torch::TensorOptions()
+              .dtype(torch::kInt)
+              .device(torch::kCUDA, 0);
+      auto indices = torch::zeros({batch_size, a_size, b_size}, options2);
+      auto rand = torch::rand({batch_size, a_size, b_size}, options2);
+      AT_DISPATCH_FLOATING_TYPES(a.type(), "matmul_forward_cuda", ([&] {
+                  sample_cuda_forward_kernel<scalar_t><<<blocks, threads_per_block>>>(
+                      a.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
+                      b.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
+                      rand.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
+                      out.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
+                      indices.packed_accessor32<int,3,torch::RestrictPtrTraits>(),
+                      in_size, a_size, b_size);
+              } ) );
+      return {out, indices};
   }
+
 }
 
 std::vector<torch::Tensor> matmul_cuda_backward(
@@ -277,7 +345,7 @@ std::vector<torch::Tensor> matmul_cuda_backward(
                       grad_out.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
                       in_size, a_size, b_size);
               }));
-  } else if (mode == 1) {
+  } else if (mode == 1 or mode == 2) {
 
       AT_DISPATCH_FLOATING_TYPES(a.type(), "matmul_forward_cuda", ([&] {
                   max_cuda_backward_kernel_A<scalar_t><<<blocks, threads_per_block>>>(
