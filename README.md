@@ -19,11 +19,11 @@ c2 = (a + b).logsumexp(-2)
 prob_a, prob_b = torch.autograd.grad(c.sum(), (a, b))
 
 # Max
-c = genbmm.logbmm(a, b)
+c = genbmm.maxbmm(a, b)
 # Equivalent
 a = a.unsqueeze(-1)
 b = b.unsqueeze(-3)
-c2 = (a + b).logsumexp(-2)
+c2, = (a + b).max(-2)
 # Grad
 argmax_a, argmax_b = torch.autograd.grad(c.sum(), (a, b))
 
@@ -35,6 +35,6 @@ b = b.unsqueeze(-3)
 c2 = (a + b).logsumexp(-2)
 # Grad
 sample_a, sample_b = torch.autograd.grad(c.sum(), (a, b))
-
+# c2 = (a + b).softmax(-2).sample(-2)
 ```
 
