@@ -211,13 +211,18 @@ std::vector<torch::Tensor> matmul_cuda_forward(
               } ) );
         return {out};
   } else if (mode == 1) {
-      auto indices = torch::zeros({batch_size, a_size, b_size}, options);
+      auto options2 = torch::TensorOptions()
+              .dtype(torch::kInt)
+              .device(torch::kCUDA, 0);
+
+
+      auto indices = torch::zeros({batch_size, a_size, b_size}, options2);
       AT_DISPATCH_FLOATING_TYPES(a.type(), "matmul_forward_cuda", ([&] {
                   max_cuda_forward_kernel<scalar_t><<<blocks, threads_per_block>>>(
                       a.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
                       b.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
                       out.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
-                      indices.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
+                      indices.packed_accessor32<int,3,torch::RestrictPtrTraits>(),
                       in_size, a_size, b_size);
               } ) );
       return {out, indices};
