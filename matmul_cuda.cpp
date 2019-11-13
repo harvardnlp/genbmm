@@ -5,14 +5,15 @@
 
 std::vector<torch::Tensor> matmul_cuda_forward(
     torch::Tensor a,
-    torch::Tensor b);
+    torch::Tensor b,
+    int mode);
 
 std::vector<torch::Tensor> matmul_cuda_backward(
         torch::Tensor a,
-        torch::Tensor b,        
+        torch::Tensor b,
         torch::Tensor grad_output,
-        torch::Tensor part
-        );
+        torch::Tensor part,
+        int mode);
 
 // C++ interface
 
@@ -23,24 +24,25 @@ std::vector<torch::Tensor> matmul_cuda_backward(
 
 std::vector<torch::Tensor> matmul_forward(
     torch::Tensor a,
-    torch::Tensor b) {
+    torch::Tensor b,
+    int mode) {
   CHECK_INPUT(a);
   CHECK_INPUT(b);
 
-  return matmul_cuda_forward(a, b);
+  return matmul_cuda_forward(a, b, mode);
 }
 
 std::vector<torch::Tensor> matmul_backward(
         torch::Tensor a,
         torch::Tensor b,
         torch::Tensor grad_output,
-        torch::Tensor part
-        ) {
+        torch::Tensor part,
+        int mode) {
   CHECK_INPUT(a);
   CHECK_INPUT(b);
   CHECK_INPUT(grad_output);
   CHECK_INPUT(part);
-  return matmul_cuda_backward(a, b, grad_output, part);
+  return matmul_cuda_backward(a, b, grad_output, part, mode);
 }
 
 
