@@ -28,7 +28,7 @@ c2, = (a + b).max(-2)
 argmax_a, argmax_b = torch.autograd.grad(c.sum(), (a, b))
 
 # Sample
-c = genbmm.logbmm(a, b)
+c = genbmm.samplebmm(a, b)
 # Equivalent
 a = a.unsqueeze(-1)
 b = b.unsqueeze(-3)
