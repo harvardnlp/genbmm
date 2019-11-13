@@ -40,7 +40,7 @@ __global__ void max_cuda_forward_kernel(
     const torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> a,
     const torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> b,
     torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> out,
-    torch::PackedTensorAccessor32<int,3,torch::RestrictPtrTraits> indices
+    torch::PackedTensorAccessor32<int,3,torch::RestrictPtrTraits> indices,
     const int in_size,
     const int a_size,
     const int b_size
@@ -200,9 +200,9 @@ std::vector<torch::Tensor> matmul_cuda_forward(
                     b_size / threads + 1,
                     batch_size);
 
-  auto ap = a.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>();
-  auto bp = b.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>();
-  auto outp = out.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>();
+  auto ap = a.packed_accessor32<float,3,torch::RestrictPtrTraits>();
+  auto bp = b.packed_accessor32<float,3,torch::RestrictPtrTraits>();
+  auto outp = out.packed_accessor32<float,3,torch::RestrictPtrTraits>();
 
   if (mode == 0) {
       AT_DISPATCH_FLOATING_TYPES(a.type(), "matmul_forward_cuda", ([&] {
@@ -239,14 +239,14 @@ std::vector<torch::Tensor> matmul_cuda_backward(
                     batch_size);
   const dim3 threads_per_block(threads, threads, 1);
   auto grad_a = torch::zeros_like(a);
-  auto grad_ap = grad_a.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>();
-  auto ap = a.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>();
-  auto bp = b.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>();
-  auto partp = part.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>();
-  auto grad_outp = grad_out.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>();
+  auto grad_ap = grad_a.packed_accessor32<float,3,torch::RestrictPtrTraits>();
+  auto ap = a.packed_accessor32<float,3,torch::RestrictPtrTraits>();
+  auto bp = b.packed_accessor32<float,3,torch::RestrictPtrTraits>();
+  auto partp = part.packed_accessor32<float,3,torch::RestrictPtrTraits>();
+  auto grad_outp = grad_out.packed_accessor32<float,3,torch::RestrictPtrTraits>();
 
   auto grad_b = torch::zeros_like(b);
-  auto grad_bp = grad_b.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>();
+  auto grad_bp = grad_b.packed_accessor32<float,3,torch::RestrictPtrTraits>();
   const int threads2 = 32;
   const dim3 blocks2(in_size / threads2 + 1,
                     b_size / threads2 + 1,
