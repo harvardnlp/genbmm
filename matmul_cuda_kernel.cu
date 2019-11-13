@@ -282,7 +282,7 @@ std::vector<torch::Tensor> matmul_cuda_forward(
               .dtype(torch::kInt)
               .device(torch::kCUDA, 0);
       auto indices = torch::zeros({batch_size, a_size, b_size}, options2);
-      auto rand = torch::rand({batch_size, a_size, b_size}, options2);
+      auto rand = torch::rand({batch_size, a_size, b_size}, options);
       AT_DISPATCH_FLOATING_TYPES(a.type(), "matmul_forward_cuda", ([&] {
                   sample_cuda_forward_kernel<scalar_t><<<blocks, threads_per_block>>>(
                       a.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
