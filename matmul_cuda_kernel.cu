@@ -200,9 +200,9 @@ std::vector<torch::Tensor> matmul_cuda_forward(
                     b_size / threads + 1,
                     batch_size);
 
-  auto ap = a.packed_accessor32<float,3,torch::RestrictPtrTraits>();
-  auto bp = b.packed_accessor32<float,3,torch::RestrictPtrTraits>();
-  auto outp = out.packed_accessor32<float,3,torch::RestrictPtrTraits>();
+  auto ap = a.packed_accessor32<float_t,3,torch::RestrictPtrTraits>();
+  auto bp = b.packed_accessor32<float_t,3,torch::RestrictPtrTraits>();
+  auto outp = out.packed_accessor32<float_t,3,torch::RestrictPtrTraits>();
 
   if (mode == 0) {
       AT_DISPATCH_FLOATING_TYPES(a.type(), "matmul_forward_cuda", ([&] {
@@ -225,7 +225,7 @@ std::vector<torch::Tensor> matmul_cuda_backward(
     torch::Tensor a,
     torch::Tensor b,
     torch::Tensor grad_out,
-    torch::Tensor part
+    torch::Tensor part,
     int mode) {
 
   const auto batch_size = a.size(0);
@@ -252,7 +252,7 @@ std::vector<torch::Tensor> matmul_cuda_backward(
                     b_size / threads2 + 1,
                     batch_size);
 
-  if (mode == 0){
+  if (mode == 0) {
       AT_DISPATCH_FLOATING_TYPES(a.type(), "matmul_forward_cuda", ([&] {
                   matmul_cuda_backward_kernel_A<scalar_t><<<blocks, threads_per_block>>>(
                       grad_ap, ap, bp, partp, grad_outp,
