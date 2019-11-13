@@ -105,7 +105,7 @@ __global__ void sample_cuda_forward_kernel(
       for (int i = 0; i < in_size; ++i) {
          scalar_t v = a[n][row][i] + b[n][i][col] - out[n][row][col];
          if (total < r && total + exp(v) > r ){
-             indices[n][row][col] = ind;
+             indices[n][row][col] = i;
              break;
          }
          total += exp(v);
