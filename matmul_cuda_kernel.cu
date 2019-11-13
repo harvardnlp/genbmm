@@ -240,8 +240,8 @@ std::vector<torch::Tensor> matmul_cuda_forward(
   const int b_size = b.size(2);
 
   auto options = torch::TensorOptions()
-    .dtype(torch::kFloat32)
-    .device(torch::kCUDA, 0);
+          .dtype(a.dtype())
+          .device(torch::kCUDA, a.device().index());
   auto out = torch::zeros({batch_size, a_size, b_size}, options);
 
   const int in_size = a.size(2);
@@ -264,7 +264,7 @@ std::vector<torch::Tensor> matmul_cuda_forward(
   } else if (mode == 1) {
       auto options2 = torch::TensorOptions()
               .dtype(torch::kInt)
-              .device(torch::kCUDA, 0);
+              .device(torch::kCUDA, a.device().index());
 
 
       auto indices = torch::zeros({batch_size, a_size, b_size}, options2);
@@ -280,7 +280,7 @@ std::vector<torch::Tensor> matmul_cuda_forward(
   } else if (mode == 2) {
       auto options2 = torch::TensorOptions()
               .dtype(torch::kInt)
-              .device(torch::kCUDA, 0);
+              .device(torch::kCUDA, a.device().index());
       auto indices = torch::zeros({batch_size, a_size, b_size}, options2);
       auto rand = torch::rand({batch_size, a_size, b_size}, options);
       AT_DISPATCH_FLOATING_TYPES(a.type(), "matmul_forward_cuda", ([&] {

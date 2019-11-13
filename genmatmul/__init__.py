@@ -1,4 +1,4 @@
-from .genmul import logmatmul,samplematmul,maxmatmul
+from .genmul import logbmm,samplebmm,maxbmm
 
 
-__all__ = [logmatmul,samplematmul,maxmatmul]
+__all__ = [logbmm,samplebmm,maxbmm]

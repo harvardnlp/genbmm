@@ -2,13 +2,13 @@ from setuptools import setup
 from torch.utils.cpp_extension import BuildExtension, CUDAExtension
 
 setup(
-    name='genmatmul',
+    name='genbmm',
     version="0.1",
     author="Alexander Rush",
     author_email="arush@cornell.edu",
-    packages=["genmatmul"],
+    packages=["genbmm"],
     ext_modules=[
-        CUDAExtension('struct_lib', [
+        CUDAExtension('_genbmm', [
             'matmul_cuda.cpp',
             'matmul_cuda_kernel.cu',
         ]),
