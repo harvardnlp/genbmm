@@ -11,7 +11,7 @@ class LogMatMul(torch.autograd.Function):
     @staticmethod
     def backward(ctx, grad_output):
         a, b, out = ctx.saved_tensors
-        return struct_lib.backward(a, b, grad_output, out, 0)
+        return struct_lib.backward(a, b, grad_output.contiguous(), out, 0)
 
 class MaxMatMul(torch.autograd.Function):
     @staticmethod
@@ -23,7 +23,7 @@ class MaxMatMul(torch.autograd.Function):
     @staticmethod
     def backward(ctx, grad_output):
         a, b, switches = ctx.saved_tensors
-        return struct_lib.backward(a, b, grad_output, switches.float(), 1)
+        return struct_lib.backward(a, b, grad_output.contiguous(), switches.float(), 1)
 
 class SampleMatMul(torch.autograd.Function):
     @staticmethod
@@ -35,7 +35,7 @@ class SampleMatMul(torch.autograd.Function):
     @staticmethod
     def backward(ctx, grad_output):
         a, b, switches = ctx.saved_tensors
-        return struct_lib.backward(a, b, grad_output, switches.float(), 2)
+        return struct_lib.backward(a, b, grad_output.contiguous(), switches.float(), 2)
 
 logmatmul = LogMatMul.apply
 maxmatmul = MaxMatMul.apply
