@@ -213,7 +213,7 @@ std::vector<torch::Tensor> matmul_cuda_forward(
   } else if (mode == 1) {
       auto indices = torch::zeros({batch_size, a_size, b_size}, options);
       AT_DISPATCH_FLOATING_TYPES(a.type(), "matmul_forward_cuda", ([&] {
-                  matmul_cuda_forward_kernel<scalar_t><<<blocks, threads_per_block>>>(
+                  max_cuda_forward_kernel<scalar_t><<<blocks, threads_per_block>>>(
                       a.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
                       b.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
                       out.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
