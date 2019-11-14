@@ -8,6 +8,8 @@
 #include <curand_kernel.h>
 namespace {
 
+    // FORWARD KERNELS
+
 template <typename scalar_t>
 __global__ void matmul_cuda_forward_kernel(
     const torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> a,
@@ -115,7 +117,7 @@ __global__ void sample_cuda_forward_kernel(
 }
 
 
-// BACKWARD
+// BACKWARD KERNELS
 
 // LOGSUM
 
@@ -170,7 +172,7 @@ __global__ void matmul_cuda_backward_kernel_B(
   }
 }
 
-// MAX
+// MAX / SAMPLE
 
 template <typename scalar_t>
 __global__ void max_cuda_backward_kernel_A(
@@ -226,9 +228,47 @@ __global__ void max_cuda_backward_kernel_B(
 
 
 
+// BANDED KERNELS
+
+template <typename scalar_t>
+__global__ void banded_cuda_forward_kernel(
+    const torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> a,
+    const torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> b,
+    torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> out,
+    const int band_size,
+    const int a_size,
+    const int b_size,
+    const int a_band,
+    const int b_band,
+    ) {
+
+  const int n = blockIdx.z;
+  const int row = threadIdx.x + blockIdx.x * blockDim.x;
+  const int col = threadIdx.y + blockIdx.y * blockDim.y;
+  scalar_t val = 0.0;
+  scalar_t m = -1e9;
+  // NOT DONE
+  if (row < a_size && col < band_size) {
+      for (int i = 0; i < in_size; ++i) {
+         scalar_t v = a[n][row][i] + b[n][row][i];
+         if (v > m) {
+             m = v;
+         }
+      }
+      for (int i = 0; i < in_size; ++i) {
+         scalar_t v = a[n][row][i] + b[n][row][i];
+         val += exp(v - m);
+      }
+      out[n][row][col] = log(val) + m;
+  }
+}
+
+
+
 } // namespace
 
 
+// MATMUL FORWARD DISPATCH
 
 std::vector<torch::Tensor> matmul_cuda_forward(
     torch::Tensor a,
@@ -297,6 +337,7 @@ std::vector<torch::Tensor> matmul_cuda_forward(
 
 }
 
+// MATMUL BACKWARD DISPATCH
 std::vector<torch::Tensor> matmul_cuda_backward(
     torch::Tensor a,
     torch::Tensor b,
@@ -368,4 +409,58 @@ std::vector<torch::Tensor> matmul_cuda_backward(
               }));
   }
   return {grad_a, grad_b};
+}
+
+// BANDED FORWARD
+std::vector<torch::Tensor> banded_cuda_forward(
+    torch::Tensor a,
+    int a_offset,
+    torch::Tensor b,
+    int b_offset,
+    int mode) {
+
+  const int batch_size = a.size(0);
+  const int a_size = a.size(1);
+  const int a_band = a.size(2);
+  const int b_size = b.size(1);
+  const int b_band = b.size(2);
+
+  const int new_size = a_band + b_band - 1;
+
+  auto options = torch::TensorOptions()
+          .dtype(a.dtype())
+          .device(torch::kCUDA, a.device().index());
+  auto out = torch::zeros({batch_size, a_size, new_size}, options);
+
+  const int in_size = a.size(2);
+  const int threads = 32;
+  const dim3 threads_per_block(threads, threads, 1);
+  const dim3 blocks(a_size / threads + 1,
+                    new_size / threads + 1,
+                    batch_size);
+
+  // Dispatch
+  if (mode == 0) {
+      AT_DISPATCH_FLOATING_TYPES(a.type(), "matmul_forward_cuda", ([&] {
+                  banded_cuda_forward_kernel<scalar_t><<<blocks, threads_per_block>>>(
+                      a.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
+                      b.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
+                      out.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
+                      new_size, a_size, b_size, a_band, b_band);
+              } ) );
+        return {out};
+  }
+
+}
+
+std::vector<torch::Tensor> banded_cuda_backward(
+        torch::Tensor a,
+        int offset_a,
+        torch::Tensor b,
+        int offset_b,
+        torch::Tensor grad_output,
+        torch::Tensor part,
+        int mode) {
+
+
 }

@@ -15,6 +15,22 @@ std::vector<torch::Tensor> matmul_cuda_backward(
         torch::Tensor part,
         int mode);
 
+std::vector<torch::Tensor> banded_cuda_forward(
+    torch::Tensor a,
+    int offset_a,
+    torch::Tensor b,
+    int offset_b,
+    int mode);
+
+std::vector<torch::Tensor> banded_cuda_backward(
+        torch::Tensor a,
+        int offset_a,
+        torch::Tensor b,
+        int offset_b,
+        torch::Tensor grad_output,
+        torch::Tensor part,
+        int mode);
+
 // C++ interface
 
 // NOTE: AT_ASSERT has become AT_CHECK on master after 0.4.
@@ -43,6 +59,34 @@ std::vector<torch::Tensor> matmul_backward(
   CHECK_INPUT(grad_output);
   CHECK_INPUT(part);
   return matmul_cuda_backward(a, b, grad_output, part, mode);
+}
+
+
+std::vector<torch::Tensor> banded_forward(
+    torch::Tensor a,
+    int offset_a,
+    torch::Tensor b,
+    int offset_b,
+    int mode) {
+  CHECK_INPUT(a);
+  CHECK_INPUT(b);
+
+  return banded_cuda_forward(a, offset_a, b, offset_b, mode);
+}
+
+std::vector<torch::Tensor> banded_backward(
+        torch::Tensor a,
+        int offset_a,
+        torch::Tensor b,
+        int offset_b,
+        torch::Tensor grad_output,
+        torch::Tensor part,
+        int mode) {
+  CHECK_INPUT(a);
+  CHECK_INPUT(b);
+  CHECK_INPUT(grad_output);
+  CHECK_INPUT(part);
+  return banded_cuda_backward(a, offset_a, b, offset_b, grad_output, part, mode);
 }
 
 
