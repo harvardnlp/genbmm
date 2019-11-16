@@ -239,7 +239,7 @@ __global__ void banded_cuda_forward_kernel(
     const int a_size,
     const int b_size,
     const int a_band,
-    const int b_band,
+    const int b_band
     ) {
 
   const int n = blockIdx.z;
