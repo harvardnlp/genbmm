@@ -228,7 +228,45 @@ __global__ void max_cuda_backward_kernel_B(
 
 
 
-// BANDED KERNELS
+// LOG BANDED KERNELS
+
+
+template <typename scalar_t>
+__global__ void banded_cuda_forward_kernel_mul(
+    const torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> a,
+    const torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> b,
+    torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> out,
+    const int band_size,
+    const int a_size,
+    const int b_size,
+    const int a_band,
+    const int b_band
+    ) {
+
+  const int n = blockIdx.z;
+  const int row = threadIdx.x + blockIdx.x * blockDim.x;
+  const int col = threadIdx.y + blockIdx.y * blockDim.y;
+
+  if (row < a_size && col < band_size) {
+      const int out_center = (band_size - 1) / 2;
+      const int a_center = (a_band - 1) / 2;
+      const int b_center = (b_band - 1) / 2;
+      scalar_t val = 0.0;
+      scalar_t m = -1e9;
+
+      const int goal = col - out_center;
+
+      // Convolve.
+      for (int i = 0; i < a_band; ++i) {
+          int j = i + goal;
+          if (j >= 0 && j < b_band) {
+              val += a[n][row][i] * b[n][row + goal][j];
+          }
+      }
+      out[n][row][col] = val;
+  }
+}
+
 
 template <typename scalar_t>
 __global__ void banded_cuda_forward_kernel(
@@ -457,6 +495,7 @@ std::vector<torch::Tensor> banded_cuda_forward(
 
   // Dispatch
   if (mode == 0) {
+      // Log Mat Mul
       AT_DISPATCH_FLOATING_TYPES(a.type(), "banded_forward_cuda", ([&] {
                   banded_cuda_forward_kernel<scalar_t><<<blocks, threads_per_block>>>(
                       a.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
@@ -465,7 +504,19 @@ std::vector<torch::Tensor> banded_cuda_forward(
                       new_size, a_size, b_size, a_band, b_band);
               } ) );
         return {out};
+  } else if (mode == 3) {
+      // Mat Mul
+      AT_DISPATCH_FLOATING_TYPES(a.type(), "banded_forward_cuda", ([&] {
+                  banded_cuda_forward_kernel_mul<scalar_t><<<blocks, threads_per_block>>>(
+                      a.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
+                      b.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
+                      out.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
+                      new_size, a_size, b_size, a_band, b_band);
+              } ) );
+        return {out};
   }
+
+
 
 }
 
