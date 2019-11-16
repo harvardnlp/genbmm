@@ -93,4 +93,7 @@ std::vector<torch::Tensor> banded_backward(
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   m.def("forward", &matmul_forward, "Log-Matmul forward (CUDA)");
   m.def("backward", &matmul_backward, "Log-Matmul backward (CUDA)");
+  m.def("forward_band", &banded_forward, "Banded Log-Matmul forward (CUDA)");
+  m.def("backward_band", &banded_backward, "Banded Log-Matmul backward (CUDA)");
+
 }

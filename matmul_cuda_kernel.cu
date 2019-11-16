@@ -245,19 +245,35 @@ __global__ void banded_cuda_forward_kernel(
   const int n = blockIdx.z;
   const int row = threadIdx.x + blockIdx.x * blockDim.x;
   const int col = threadIdx.y + blockIdx.y * blockDim.y;
-  scalar_t val = 0.0;
-  scalar_t m = -1e9;
+
+
+
   // NOT DONE
   if (row < a_size && col < band_size) {
-      for (int i = 0; i < in_size; ++i) {
-         scalar_t v = a[n][row][i] + b[n][row][i];
-         if (v > m) {
-             m = v;
-         }
+      const int out_center = (band_size - 1) / 2;
+      const int a_center = (a_band - 1) / 2;
+      const int b_center = (b_band - 1) / 2;
+      scalar_t val = 0.0;
+      scalar_t m = -1e9;
+
+      const int goal = col - out_center;
+
+      // Convolve.
+      for (int i = 0; i < a_band; ++i) {
+          int j = i + goal;
+          if (j >= 0 && j < b_band) {
+              scalar_t v = a[n][row][i] + b[n][row + goal][j];
+              if (v > m) {
+                  m = v;
+              }
+          }
       }
-      for (int i = 0; i < in_size; ++i) {
-         scalar_t v = a[n][row][i] + b[n][row][i];
-         val += exp(v - m);
+      for (int i = 0; i < a_band; ++i) {
+          int j = i + goal;
+          if (j >= 0 && j < b_band) {
+              scalar_t v = a[n][row][i] + b[n][row + goal][j];
+              val += exp(v - m);
+          }
       }
       out[n][row][col] = log(val) + m;
   }
@@ -441,7 +457,7 @@ std::vector<torch::Tensor> banded_cuda_forward(
 
   // Dispatch
   if (mode == 0) {
-      AT_DISPATCH_FLOATING_TYPES(a.type(), "matmul_forward_cuda", ([&] {
+      AT_DISPATCH_FLOATING_TYPES(a.type(), "banded_forward_cuda", ([&] {
                   banded_cuda_forward_kernel<scalar_t><<<blocks, threads_per_block>>>(
                       a.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
                       b.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
