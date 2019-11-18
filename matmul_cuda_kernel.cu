@@ -489,7 +489,6 @@ std::vector<torch::Tensor> matmul_cuda_backward(
 // BANDED FORWARD
 std::vector<torch::Tensor> banded_cuda_forward(
     torch::Tensor a,
-    int a_offset,
     int a_lu,
     int a_lb,
     torch::Tensor b,
