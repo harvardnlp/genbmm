@@ -23,9 +23,11 @@ __global__ void matmul_cuda_forward_kernel(
   const int n = blockIdx.z;
   const int row = threadIdx.x + blockIdx.x * blockDim.x;
   const int col = threadIdx.y + blockIdx.y * blockDim.y;
-  scalar_t val = 0.0;
-  scalar_t m = -1e9;
+
   if (row < a_size && col < b_size) {
+      scalar_t val = 0.0;
+
+      scalar_t m = -1e9;
       for (int i = 0; i < in_size; ++i) {
          scalar_t v = a[n][row][i] + b[n][i][col];
          if (v > m) {
@@ -228,7 +230,7 @@ __global__ void max_cuda_backward_kernel_B(
 
 
 
-// LOG BANDED KERNELS
+// BANDED KERNELS
 
 
 template <typename scalar_t>
@@ -236,88 +238,101 @@ __global__ void banded_cuda_forward_kernel_mul(
     const torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> a,
     const torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> b,
     torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> out,
-    const int band_size,
-    const int a_size,
-    const int b_size,
-    const int a_band,
-    const int b_band
+    const int n,
+    const int a_lu,
+    const int a_lb,
+    const int b_lu,
+    const int b_lb,
+    const int result_lu,
+    const int result_lb,
+    const int mode
     ) {
 
   const int n = blockIdx.z;
-  const int row = threadIdx.x + blockIdx.x * blockDim.x;
-  const int col = threadIdx.y + blockIdx.y * blockDim.y;
+  const int i = threadIdx.x + blockIdx.x * blockDim.x;
+  const int j = threadIdx.y + blockIdx.y * blockDim.y;
 
-  if (row < a_size && col < band_size) {
-      const int out_center = (band_size - 1) / 2;
-      const int a_center = (a_band - 1) / 2;
-      const int b_center = (b_band - 1) / 2;
-      scalar_t val = 0.0;
-      scalar_t m = -1e9;
+  if (i < n && j < result_lu + result_lb + 1) {
+      const int self_width = a_lu + a_lb + 1;
+      const int b_width = b_lu + b_lb + 1;
+      const int o =  i + (j - result_lu);
+      int k2 = 0;
+      if (o < 0 || o >= n) continue;
 
-      const int goal = col - out_center;
-
-      // Convolve.
-      for (int i = 0; i < a_band; ++i) {
-          int j = i + goal;
-          if (j >= 0 && j < b_band) {
-              val += a[n][row][i] * b[n][row + goal][j];
+      if (mode == 3) {
+          scalar_t val = 0.0;
+          for (int k = 0; k < self_width; ++k) {
+              k2 = ((i + (k - a_lu)) - o) + b_lu;
+              if (k2 < 0 || k2 >= b_width) continue;
+              val += a[n][i][k] * b[n][o][k2];
           }
+          out[n][i][j] = val;
+      } else if (mode == 0) {
+          scalar_t m = -1e9;
+          for (int k = 0; k < self_width; ++k) {
+              k2 = ((i + (k - a_lu)) - o) + b_lu;
+              if (k2 < 0 || k2 >= b_width) continue;
+
+              scalar_t v = a[n][i][k] + b[n][o][k2];
+              if (v > m) m = v;
+          }
+          for (int k = 0; k < self_width; ++k) {
+              k2 = ((i + (k - a_lu)) - o) + b_lu;
+              if (k2 < 0 || k2 >= b_width) continue;
+              val += exp(a[n][i][k] + b[n][o][k2] - m);
+          }
+          out[n][i][j] = log(val) + m;
       }
-      out[n][row][col] = val;
   }
 }
-
 
 template <typename scalar_t>
-__global__ void banded_cuda_forward_kernel(
+__global__ void banded_cuda_backward_kernel_mul(
+    torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> grad_a,
     const torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> a,
     const torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> b,
-    torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> out,
-    const int band_size,
-    const int a_size,
-    const int b_size,
-    const int a_band,
-    const int b_band
-    ) {
+    const torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> part,
+    const torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> grad_output,
+    const int n,
+    const int a_lu,
+    const int a_lb,
+    const int b_lu,
+    const int b_lb,
+    const int result_lu,
+    const int result_lb,
+    const int mode) {
 
   const int n = blockIdx.z;
-  const int row = threadIdx.x + blockIdx.x * blockDim.x;
-  const int col = threadIdx.y + blockIdx.y * blockDim.y;
+  const int i = threadIdx.x + blockIdx.x * blockDim.x;
+  const int j = threadIdx.y + blockIdx.y * blockDim.y;
 
-
-
-  // NOT DONE
-  if (row < a_size && col < band_size) {
-      const int out_center = (band_size - 1) / 2;
-      const int a_center = (a_band - 1) / 2;
-      const int b_center = (b_band - 1) / 2;
+  if (i < n && j < a_lu + a_lb + 1) {
+      const int o = i + (j - a_lu);
       scalar_t val = 0.0;
-      scalar_t m = -1e9;
+      const int gradout_width = result_lu + result_lb + 1;
 
-      const int goal = col - out_center;
+      if (mode == 3) {
+          for (int k = 0; k < gradout_width; ++k) {
+              const int pos = i + (k - result_lu);
+              const int k2 = (o - pos) + b_lu;
+              if (k2 < 0 || k2 >= b_lu + b_lb +1) continue;
+              if (pos < 0 || pos >= n) continue;
+              val += b[n][pos][k2] * grad_output[n][i][k];
+          }
+      } else if (mode == 0) {
+          for (int k = 0; k < gradout_width; ++k) {
+              const int pos = i + (k - result_lu);
+              const int k2 = (o - pos) + b_lu;
+              if (k2 < 0 || k2 >= b_lu + b_lb +1) continue;
+              if (pos < 0 || pos >= n) continue;
 
-      // Convolve.
-      for (int i = 0; i < a_band; ++i) {
-          int j = i + goal;
-          if (j >= 0 && j < b_band) {
-              scalar_t v = a[n][row][i] + b[n][row + goal][j];
-              if (v > m) {
-                  m = v;
-              }
+              scalar_t v = a[n][i][j] + b[n][pos][k2] - part[n][i][k];
+              val += exp(v) * grad_output[n][i][k];
           }
       }
-      for (int i = 0; i < a_band; ++i) {
-          int j = i + goal;
-          if (j >= 0 && j < b_band) {
-              scalar_t v = a[n][row][i] + b[n][row + goal][j];
-              val += exp(v - m);
-          }
-      }
-      out[n][row][col] = log(val) + m;
+      grad_a[n][i][j] = val;
   }
 }
-
-
 
 } // namespace
 
@@ -359,8 +374,6 @@ std::vector<torch::Tensor> matmul_cuda_forward(
       auto options2 = torch::TensorOptions()
               .dtype(torch::kInt)
               .device(torch::kCUDA, a.device().index());
-
-
       auto indices = torch::zeros({batch_size, a_size, b_size}, options2);
       AT_DISPATCH_FLOATING_TYPES(a.type(), "matmul_forward_cuda", ([&] {
                   max_cuda_forward_kernel<scalar_t><<<blocks, threads_per_block>>>(
@@ -469,49 +482,44 @@ std::vector<torch::Tensor> matmul_cuda_backward(
 std::vector<torch::Tensor> banded_cuda_forward(
     torch::Tensor a,
     int a_offset,
+    int a_lu,
+    int a_lb,
     torch::Tensor b,
-    int b_offset,
+    int b_lu,
+    int b_lb,
     int mode) {
 
-  const int batch_size = a.size(0);
-  const int a_size = a.size(1);
-  const int a_band = a.size(2);
-  const int b_size = b.size(1);
-  const int b_band = b.size(2);
+    const int batch_size = a.size(0);
+    const int out_lu = a_lu + b_lb;
+    const int out_lb = a_lb + b_lu;
 
-  const int new_size = a_band + b_band - 1;
+    const int a_size = a.size(1);
+    const int new_size = out_lu + out_lb + 1;
 
-  auto options = torch::TensorOptions()
-          .dtype(a.dtype())
-          .device(torch::kCUDA, a.device().index());
-  auto out = torch::zeros({batch_size, a_size, new_size}, options);
+    auto options = torch::TensorOptions()
+            .dtype(a.dtype())
+            .device(torch::kCUDA, a.device().index());
+    auto out = torch::zeros({batch_size, a_size, new_size}, options);
 
-  const int in_size = a.size(2);
-  const int threads = 32;
-  const dim3 threads_per_block(threads, threads, 1);
-  const dim3 blocks(a_size / threads + 1,
-                    new_size / threads + 1,
-                    batch_size);
+    const int in_size = a.size(2);
+    const int threads = 32;
+    const dim3 threads_per_block(threads, threads, 1);
+    const dim3 blocks(a_size / threads + 1,
+                      new_size / threads + 1,
+                      batch_size);
 
   // Dispatch
   if (mode == 0) {
-      // Log Mat Mul
-      AT_DISPATCH_FLOATING_TYPES(a.type(), "banded_forward_cuda", ([&] {
-                  banded_cuda_forward_kernel<scalar_t><<<blocks, threads_per_block>>>(
-                      a.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
-                      b.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
-                      out.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
-                      new_size, a_size, b_size, a_band, b_band);
-              } ) );
-        return {out};
-  } else if (mode == 3) {
       // Mat Mul
       AT_DISPATCH_FLOATING_TYPES(a.type(), "banded_forward_cuda", ([&] {
                   banded_cuda_forward_kernel_mul<scalar_t><<<blocks, threads_per_block>>>(
                       a.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
                       b.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
                       out.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
-                      new_size, a_size, b_size, a_band, b_band);
+                      n, a_lu, a_lb, b_lu, b_lb,
+                      out_lu, out_lb,
+                      mode);
+
               } ) );
         return {out};
   }
@@ -522,12 +530,44 @@ std::vector<torch::Tensor> banded_cuda_forward(
 
 std::vector<torch::Tensor> banded_cuda_backward(
         torch::Tensor a,
-        int offset_a,
+        int a_lu,
+        int a_lb,
         torch::Tensor b,
-        int offset_b,
+        int b_lu,
+        int b_lb,
         torch::Tensor grad_output,
         torch::Tensor part,
         int mode) {
 
+    const int batch_size = a.size(0);
+    const int out_lu = a_lu + b_lb;
+    const int out_lb = a_lb + b_lu;
+
+    const int a_size = a.size(1);
+    const int new_size = out_lu + out_lb + 1;
+
+    auto options = torch::TensorOptions()
+            .dtype(a.dtype())
+            .device(torch::kCUDA, a.device().index());
+    auto out = torch::zeros({batch_size, a_size, new_size}, options);
+
+
+    const int threads = 32;
+    const dim3 blocks(a_size / threads + 1,
+                      in_size / threads + 1,
+                      batch_size);
+    const dim3 threads_per_block(threads, threads, 1);
+    auto grad_a = torch::zeros_like(a);
+
+    AT_DISPATCH_FLOATING_TYPES(a.type(), "matmul_forward_cuda", ([&] {
+       matmul_cuda_backward_kernel_A<scalar_t><<<blocks, threads_per_block>>>(
+           grad_a.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
+           a.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
+           b.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
+           part.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
+           grad_out.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
+           in_size, a_size, b_size
+                                                                              );
+            }));
 
 }

@@ -28,23 +28,18 @@ def repdiag(x, lu, ld):
     return torch.diagonal(x.unfold(-2, lu +ld +1, 1), 0, -2, -1)
 
 class BandedMatrix:
-    def __init__(self, data, lu=0, ld=0, fill=0):
+    def __init__(self, data, lu=0, ld=0):
         batch, n, off = data.shape
         assert off == lu + ld + 1, "Offsets need to add up."
-        if lu > 0:
-            assert data[0, 0, 0] == fill
-        if ld > 0:
-            assert data[0, -1, -1] == fill
         self.data = data
         self.lu, self.ld = lu, ld
-        self.fill = fill
         self.width = lu + ld + 1
 
     def _new(self, lu, ld):
         batch, n, off = self.data.shape
         data = torch.zeros(batch, n, ld + lu + 1,
                            dtype=self.data.dtype,
-                           device=self.data.device).fill_(self.fill)
+                           device=self.data.device)
         return data
 
     def to_dense(self):
@@ -63,11 +58,11 @@ class BandedMatrix:
         return BandedMatrix(data, lu, ld)
 
 
-    def op(self, other, op):
+    def op(self, other, op, zero=0):
         batch, n, off = self.data.shape
         lu = max(self.lu, other.lu)
         ld = max(self.ld, other.ld)
-        data = self._new(lu, ld)
+        data = self._new(lu, ld).fill_(zero)
 
         s1 = lu - self.lu
         data[:, :, s1: s1+self.width] = self.data
@@ -83,7 +78,7 @@ class BandedMatrix:
         return BandedMatrix(y2, self.ld, self.lu)
 
 
-    def multiply(self, other):
+    def multiply_simple(self, other):
         batch, n, off = self.data.shape
         assert other.data.shape[1] == n
 
@@ -101,9 +96,35 @@ class BandedMatrix:
                 val = torch.zeros(batch)
                 for k in range(self.width):
                     pos = i + (k - self.lu)
+                    if pos < 0 or pos >=n:
+                        continue
+
                     k2 = (pos - o) + other.lu
                     if k2 < 0 or k2 >= other.width:
                         continue
                     val += self.data[:, i, k] * other.data[:, o, k2]
                 data[:, i, j] = val
         return result
+
+
+
+    def multiply_back_simple(self, other, grad_out):
+        batch, n, off = self.data.shape
+        assert other.data.shape[1] == n
+        data = self._new(self.lu, self.ld)
+        result = BandedMatrix(data, self.lu, self.ld)
+
+        for i in range(n):
+            for j in range(self.width):
+                o = i + (j - self.lu)
+                val = torch.zeros(batch)
+                for k in range(grad_out.width):
+                    pos = i + (k - grad_out.lu)
+                    if pos < 0 or pos >= n:
+                        continue
+                    k2 = (o - pos) + other.lu
+                    if k2 < 0 or k2 >= other.width:
+                        continue
+                    val += other.data[:, pos, k2] * grad_out.data[:, i, k]
+                data[:, i, j] = val
+        return result.transpose()
