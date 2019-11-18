@@ -238,7 +238,7 @@ __global__ void banded_cuda_forward_kernel_mul(
     const torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> a,
     const torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> b,
     torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> out,
-    const int n_size,
+    const int n,
     const int a_lu,
     const int a_lb,
     const int b_lu,
@@ -258,12 +258,12 @@ __global__ void banded_cuda_forward_kernel_mul(
       const int o =  i + (j - result_lu);
       int k2 = 0;
       int pos = 0;
-      if (o < 0 || o >= n) continue;
+      if (o < 0 || o >= n) return;
 
       if (mode == 3) {
           scalar_t val = 0.0;
           for (int k = 0; k < self_width; ++k) {
-              pos = (i + (k - a_lu);
+              pos = (i + (k - a_lu));
               k2 = (pos - o) + b_lu;
               if (k2 < 0 || k2 >= b_width) continue;
               if (pos < 0 || pos >= n) continue;
@@ -274,7 +274,7 @@ __global__ void banded_cuda_forward_kernel_mul(
       } else if (mode == 0) {
           scalar_t m = -1e9;
           for (int k = 0; k < self_width; ++k) {
-              pos = (i + (k - a_lu);
+              pos = (i + (k - a_lu));
               k2 = (pos - o) + b_lu;
               if (k2 < 0 || k2 >= b_width) continue;
               if (pos < 0 || pos >= n) continue;
