@@ -272,68 +272,13 @@ __global__ void banded_cuda_forward_kernel_mul(
           }
           out[batch][i][j] = val;
       } else if (mode == 0) {
-          scalar_t m = -1e9;
-          for (int k = 0; k < self_width; ++k) {
-              pos = (i + (k - a_lu));
-              k2 = (pos - o) + b_lu;
-              if (k2 < 0 || k2 >= b_width) continue;
-              if (pos < 0 || pos >= n) continue;
-
-              scalar_t v = a[batch][i][k] + b[batch][o][k2];
-              if (v > m) m = v;
-          }
-          for (int k = 0; k < self_width; ++k) {
-              k2 = ((i + (k - a_lu)) - o) + b_lu;
-              if (k2 < 0 || k2 >= b_width) continue;
-              val += exp(a[batch][i][k] + b[batch][o][k2] - m);
-          }
-          out[batch][i][j] = log(val) + m;
-      }
-  }
-}
-
-template <typename scalar_t>
-__global__ void banded_cuda_backward_kernel_mul(
-    torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> grad_a,
-    const torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> a,
-    const torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> b,
-    const torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> part,
-    const torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> grad_output,
-    const int n,
-    const int a_lu,
-    const int a_lb,
-    const int b_lu,
-    const int b_lb,
-    const int result_lu,
-    const int result_lb,
-    const int mode) {
-
-  const int batch = blockIdx.z;
-  const int i = threadIdx.x + blockIdx.x * blockDim.x;
-  const int j = threadIdx.y + blockIdx.y * blockDim.y;
-
-  if (i < n && j < a_lu + a_lb + 1) {
-      const int o = i + (j - a_lu);
-      scalar_t val = 0.0;
-      const int gradout_width = result_lu + result_lb + 1;
-
-      if (mode == 3) {
+          scalar_t val = 0.0;
           for (int k = 0; k < gradout_width; ++k) {
               const int pos = i + (k - result_lu);
               const int k2 = (o - pos) + b_lu;
               if (k2 < 0 || k2 >= b_lu + b_lb +1) continue;
               if (pos < 0 || pos >= n) continue;
               val += b[batch][pos][k2] * grad_output[batch][i][k];
-          }
-      } else if (mode == 0) {
-          for (int k = 0; k < gradout_width; ++k) {
-              const int pos = i + (k - result_lu);
-              const int k2 = (o - pos) + b_lu;
-              if (k2 < 0 || k2 >= b_lu + b_lb +1) continue;
-              if (pos < 0 || pos >= n) continue;
-
-              scalar_t v = a[batch][i][j] + b[batch][pos][k2] - part[batch][i][k];
-              val += exp(v) * grad_output[batch][i][k];
           }
       }
       grad_a[batch][i][j] = val;
