@@ -1,4 +1,8 @@
 import torch
+try:
+    import _genbmm
+except:
+    pass
 
 def banddiag(orig_x, lu, ld, fill=0):
     s = list(orig_x.shape)

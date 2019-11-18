@@ -1,5 +1,9 @@
 import torch
-import _genbmm
+
+try:
+    import _genbmm
+except:
+    pass
 
 class LogMatMul(torch.autograd.Function):
     @staticmethod
