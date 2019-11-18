@@ -578,5 +578,6 @@ std::vector<torch::Tensor> banded_cuda_backward(
 
                                                                               );
             }));
+    return {grad_a};
 
 }

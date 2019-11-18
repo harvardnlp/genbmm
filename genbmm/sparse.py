@@ -82,6 +82,15 @@ class BandedMatrix:
         return BandedMatrix(y2, self.ld, self.lu)
 
 
+    def multiply(self, other):
+        batch, n, off = self.data.shape
+        assert other.data.shape[1] == n
+        lu = self.lu + other.ld
+        ld = self.ld + other.lu
+        out, = _genbmm.forward_band(self.data, self.lu, self.ld,
+                             other.data, other.lu, other.ld)
+        return BandedMatrix(out, lu, ld)
+
     def multiply_simple(self, other):
         batch, n, off = self.data.shape
         assert other.data.shape[1] == n
@@ -111,6 +120,16 @@ class BandedMatrix:
         return result
 
 
+    def multiply_back(self, other, out, grad_out):
+        batch, n, off = self.data.shape
+        assert other.data.shape[1] == n
+        lu = self.lu + other.ld
+        ld = self.ld + other.lu
+        grad_a, = _genbmm.backward_band(self.data, self.lu, self.ld,
+                                     other.data, other.lu, other.ld,
+                                     grad_out, grad_out, 3)
+        grad_a = BandedMatrix(grad_a, self.lu, self.ld)
+        return grad_a
 
     def multiply_back_simple(self, other, grad_out):
         batch, n, off = self.data.shape
