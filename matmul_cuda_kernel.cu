@@ -566,7 +566,7 @@ std::vector<torch::Tensor> banded_cuda_backward(
     auto grad_a = torch::zeros_like(a);
 
     AT_DISPATCH_FLOATING_TYPES(a.type(), "matmul_forward_cuda", ([&] {
-       matmul_cuda_backward_kernel_mul<scalar_t><<<blocks, threads_per_block>>>(
+       banded_cuda_backward_kernel_mul<scalar_t><<<blocks, threads_per_block>>>(
            grad_a.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
            a.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
            b.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
