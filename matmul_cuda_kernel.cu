@@ -516,20 +516,19 @@ std::vector<torch::Tensor> banded_cuda_forward(
                       batch_size);
 
   // Dispatch
-  if (mode == 0) {
-      // Mat Mul
-      AT_DISPATCH_FLOATING_TYPES(a.type(), "banded_forward_cuda", ([&] {
-                  banded_cuda_forward_kernel_mul<scalar_t><<<blocks, threads_per_block>>>(
-                      a.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
-                      b.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
-                      out.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
-                      batch_size, a_lu, a_lb, b_lu, b_lb,
-                      out_lu, out_lb,
-                      mode);
+  /* if (mode == 0) { */
+    // Mat Mul
+    AT_DISPATCH_FLOATING_TYPES(a.type(), "banded_forward_cuda", ([&] {
+                banded_cuda_forward_kernel_mul<scalar_t><<<blocks, threads_per_block>>>(
+                    a.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
+                    b.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
+                    out.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
+                    batch_size, a_lu, a_lb, b_lu, b_lb,
+                    out_lu, out_lb,
+                    mode);
 
-              } ) );
-        return {out};
-  }
+            } ) );
+    return {out};
 
 
 
