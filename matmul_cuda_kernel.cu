@@ -257,21 +257,27 @@ __global__ void banded_cuda_forward_kernel_mul(
       const int b_width = b_lu + b_lb + 1;
       const int o =  i + (j - result_lu);
       int k2 = 0;
+      int pos = 0;
       if (o < 0 || o >= n) continue;
 
       if (mode == 3) {
           scalar_t val = 0.0;
           for (int k = 0; k < self_width; ++k) {
-              k2 = ((i + (k - a_lu)) - o) + b_lu;
+              pos = (i + (k - a_lu);
+              k2 = (pos - o) + b_lu;
               if (k2 < 0 || k2 >= b_width) continue;
+              if (pos < 0 || pos >= n) continue;
+
               val += a[n][i][k] * b[n][o][k2];
           }
           out[n][i][j] = val;
       } else if (mode == 0) {
           scalar_t m = -1e9;
           for (int k = 0; k < self_width; ++k) {
-              k2 = ((i + (k - a_lu)) - o) + b_lu;
+              pos = (i + (k - a_lu);
+              k2 = (pos - o) + b_lu;
               if (k2 < 0 || k2 >= b_width) continue;
+              if (pos < 0 || pos >= n) continue;
 
               scalar_t v = a[n][i][k] + b[n][o][k2];
               if (v > m) m = v;

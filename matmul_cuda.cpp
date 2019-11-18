@@ -77,7 +77,7 @@ std::vector<torch::Tensor> banded_forward(
   CHECK_INPUT(a);
   CHECK_INPUT(b);
 
-  return banded_cuda_forward(a, offset_a, b, offset_b, mode);
+  return banded_cuda_forward(a, a_lu, a_lb, b, b_lu, b_lb, mode);
 }
 
 std::vector<torch::Tensor> banded_backward(
