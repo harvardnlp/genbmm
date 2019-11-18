@@ -238,7 +238,7 @@ __global__ void banded_cuda_forward_kernel_mul(
     const torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> a,
     const torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> b,
     torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> out,
-    const int n,
+    const int n_size,
     const int a_lu,
     const int a_lb,
     const int b_lu,
@@ -248,7 +248,7 @@ __global__ void banded_cuda_forward_kernel_mul(
     const int mode
     ) {
 
-  const int n = blockIdx.z;
+  const int batch = blockIdx.z;
   const int i = threadIdx.x + blockIdx.x * blockDim.x;
   const int j = threadIdx.y + blockIdx.y * blockDim.y;
 
@@ -268,9 +268,9 @@ __global__ void banded_cuda_forward_kernel_mul(
               if (k2 < 0 || k2 >= b_width) continue;
               if (pos < 0 || pos >= n) continue;
 
-              val += a[n][i][k] * b[n][o][k2];
+              val += a[batch][i][k] * b[batch][o][k2];
           }
-          out[n][i][j] = val;
+          out[batch][i][j] = val;
       } else if (mode == 0) {
           scalar_t m = -1e9;
           for (int k = 0; k < self_width; ++k) {
@@ -279,15 +279,15 @@ __global__ void banded_cuda_forward_kernel_mul(
               if (k2 < 0 || k2 >= b_width) continue;
               if (pos < 0 || pos >= n) continue;
 
-              scalar_t v = a[n][i][k] + b[n][o][k2];
+              scalar_t v = a[batch][i][k] + b[batch][o][k2];
               if (v > m) m = v;
           }
           for (int k = 0; k < self_width; ++k) {
               k2 = ((i + (k - a_lu)) - o) + b_lu;
               if (k2 < 0 || k2 >= b_width) continue;
-              val += exp(a[n][i][k] + b[n][o][k2] - m);
+              val += exp(a[batch][i][k] + b[batch][o][k2] - m);
           }
-          out[n][i][j] = log(val) + m;
+          out[batch][i][j] = log(val) + m;
       }
   }
 }
@@ -308,7 +308,7 @@ __global__ void banded_cuda_backward_kernel_mul(
     const int result_lb,
     const int mode) {
 
-  const int n = blockIdx.z;
+  const int batch = blockIdx.z;
   const int i = threadIdx.x + blockIdx.x * blockDim.x;
   const int j = threadIdx.y + blockIdx.y * blockDim.y;
 
@@ -323,7 +323,7 @@ __global__ void banded_cuda_backward_kernel_mul(
               const int k2 = (o - pos) + b_lu;
               if (k2 < 0 || k2 >= b_lu + b_lb +1) continue;
               if (pos < 0 || pos >= n) continue;
-              val += b[n][pos][k2] * grad_output[n][i][k];
+              val += b[batch][pos][k2] * grad_output[batch][i][k];
           }
       } else if (mode == 0) {
           for (int k = 0; k < gradout_width; ++k) {
@@ -332,11 +332,11 @@ __global__ void banded_cuda_backward_kernel_mul(
               if (k2 < 0 || k2 >= b_lu + b_lb +1) continue;
               if (pos < 0 || pos >= n) continue;
 
-              scalar_t v = a[n][i][j] + b[n][pos][k2] - part[n][i][k];
-              val += exp(v) * grad_output[n][i][k];
+              scalar_t v = a[batch][i][j] + b[batch][pos][k2] - part[batch][i][k];
+              val += exp(v) * grad_output[batch][i][k];
           }
       }
-      grad_a[n][i][j] = val;
+      grad_a[batch][i][j] = val;
   }
 }
 
