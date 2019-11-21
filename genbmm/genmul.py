@@ -75,21 +75,35 @@ class BandedMul(torch.autograd.Function):
 
 class BandedLogMul(torch.autograd.Function):
     @staticmethod
-    def forward(ctx, a, a_lu, a_ld, b, b_lu, b_ld):
+    def forward(ctx, a, a_lu, a_ld, b, b_lu, b_ld, o_lu, o_ld):
         a = a.contiguous()
         b = b.contiguous()
-
         out, = _genbmm.forward_band(a, a_lu, a_ld,
                                     b, b_lu, b_ld, 0)
-        ctx.save_for_backward(a, b, out, torch.LongTensor([a_lu, a_ld, b_lu, b_ld]))
+        ctx.save_for_backward(a, b, out,
+                              torch.LongTensor([a_lu, a_ld, b_lu, b_ld, o_lu, o_ld]))
         return out
 
     @staticmethod
     def backward(ctx, grad_output):
         a, b, switches, bands = ctx.saved_tensors
-        a_lu, a_ld, b_lu, b_ld = bands.tolist()
-        grad_a, grad_b = _genbmm.backward_band(
-            a, a_lu, a_ld, b, b_lu, b_ld, grad_output.contiguous(), switches.float(), 0
+        a_lu, a_ld, b_lu, b_ld, o_lu, o_ld = bands.tolist()
+        a = BandedMatrix(a, a_lu, a_ld, -1e9)
+        b = BandedMatrix(b, b_lu, b_ld, -1e9)
+        grad_output = BandedMatrix(grad_output, o_lu, o_ld, -1e9)
+        switches = BandedMatrix(switches.float(), o_lu, o_ld, -1e9)
+
+        grad_a, = _genbmm.backward_band(
+            a.data, a.lu, a.ld, b.data, b.lu, b.ld,
+            grad_output.contiguous(), switches.data, 0
+        )
+        grad_a = BandedMatrix(grad_a, o_lu, o_ld).transpose().data
+        b  = b.tranpose()
+        grad_b, = _genbmm.backward_band(
+            b.data, b.lu, b.ld,
+            a.data, a.lu, a.ld,
+            grad_output.transpose().data.contiguous(),
+            switches.transpose().data, 0
         )
         return grad_a, grad_b
 
