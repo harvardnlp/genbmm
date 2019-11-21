@@ -151,7 +151,7 @@ class BandedMatrix:
             assert other.data.shape[1] == n
             lu = self.lu + other.ld
             ld = self.ld + other.lu
-            out, = bandedbmm(self.data, self.lu, self.ld, other.data, other.lu, other.ld)
+            out = bandedbmm(self.data, self.lu, self.ld, other.data, other.lu, other.ld)
             return BandedMatrix(out, lu, ld, self.fill)
         else:
             return self.multiply_simple(other)
@@ -162,7 +162,7 @@ class BandedMatrix:
             assert other.data.shape[1] == n
             lu = self.lu + other.ld
             ld = self.ld + other.lu
-            out, = bandedlogbmm(self.data, self.lu, self.ld, other.data, other.lu, other.ld)
+            out = bandedlogbmm(self.data, self.lu, self.ld, other.data, other.lu, other.ld)
             return BandedMatrix(out, lu, ld, self.fill)
         else:
             return self.multiply_log_simple(other)
