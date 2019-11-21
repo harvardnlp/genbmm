@@ -55,7 +55,7 @@ class SampleMatMul(torch.autograd.Function):
 class BandedMul(torch.autograd.Function):
     @staticmethod
     def forward(ctx, a, a_lu, a_ld, b, b_lu, b_ld):
-        out, = _genbmm.forward_band(a, a, a_lu, a_ld, b, b_lu, b_ld, 3):
+        out, = _genbmm.forward_band(a, a, a_lu, a_ld, b, b_lu, b_ld, 3)
         ctx.save_for_backward(a, b, out, torch.LongTensor([a_lu, a_ld, b_lu, b_ld]))
         return out
 
@@ -72,7 +72,7 @@ class BandedMul(torch.autograd.Function):
 class BandedLogMul(torch.autograd.Function):
     @staticmethod
     def forward(ctx, a, a_lu, a_ld, b, b_lu, b_ld):
-        out, = _genbmm.forward_band(a, a_lu, a_ld, b, b_lu, b_ld, 3):
+        out, = _genbmm.forward_band(a, a_lu, a_ld, b, b_lu, b_ld, 0)
         ctx.save_for_backward(a, b, out, torch.LongTensor([a_lu, a_ld, b_lu, b_ld]))
         return out
 
