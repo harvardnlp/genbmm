@@ -1,5 +1,5 @@
 import torch
-
+from .sparse import BandedMatrix
 try:
     import _genbmm
 except ImportError:
