@@ -51,13 +51,13 @@ class BandedMatrix:
     def band_shift(self):
         batch, n, off = self.data.shape
         return BandedMatrix(torch.cat([self.data[:, :, 1:],
-                                       torch.zeros(batch, n, 1).fill_(fill)], 2),
+                                       torch.zeros(batch, n, 1).fill_(self.fill)], 2),
                             self.lu-1, self.ld+1, self.fill)
 
     def band_unshift(self):
         batch, n, off = self.data.shape
         return BandedMatrix(torch.cat([
-            torch.zeros(batch, n, 1).fill_(fill),
+            torch.zeros(batch, n, 1).fill_(self.fill),
             self.data[:, :, :-1]
         ], 2),
                             self.lu-1, self.ld+1, self.fill)
@@ -66,13 +66,13 @@ class BandedMatrix:
     def col_shift(self):
         batch, n, off = self.data.shape
         return BandedMatrix(torch.cat([self.data[:, 1:, :],
-                                       torch.zeros(batch, 1, off).fill_(fill)], 1),
+                                       torch.zeros(batch, 1, off).fill_(self.fill)], 1),
                             self.lu-1, self.ld+1, self.fill)
 
     def col_unshift(self):
         batch, n, off = self.data.shape
         return BandedMatrix(torch.cat([
-            torch.zeros(batch, 1, off).fill_(fill),
+            torch.zeros(batch, 1, off).fill_(self.fill),
             self.data[:, :-1, :],
         ], 1),
                             self.lu+1, self.ld-1, self.fill)
