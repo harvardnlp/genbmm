@@ -330,7 +330,7 @@ class BandedLogMul(torch.autograd.Function):
             grad_output.transpose().data.contiguous(),
             switches.transpose().data.contiguous(), 0
         )
-        return grad_a, grad_b
+        return grad_a, None, None, grad_b, None, None, None, None
 
 bandedbmm = BandedMul.apply
 bandedlogbmm = BandedLogMul.apply
