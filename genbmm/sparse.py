@@ -322,7 +322,7 @@ class BandedLogMul(torch.autograd.Function):
             b.data, b.lu, b.ld,
             grad_output.data.contiguous(), switches.data, 0
         )
-        grad_b = BandedMatrix(grad_b, b_ld, b_lu).transpose().data
+        grad_b = BandedMatrix(grad_b, b_ld, b_lu).data
         b  = b.transpose()
         grad_a, = _genbmm.backward_band(
             b.data.contiguous(), b.lu, b.ld,
@@ -330,6 +330,7 @@ class BandedLogMul(torch.autograd.Function):
             grad_output.transpose().data.contiguous(),
             switches.transpose().data.contiguous(), 0
         )
+        grad_a = BandedMatrix(grad_a, a_ld, a_lu).transpose().data
         return grad_a, None, None, grad_b, None, None, None, None
 
 bandedbmm = BandedMul.apply
