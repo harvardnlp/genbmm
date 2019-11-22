@@ -238,6 +238,7 @@ __global__ void banded_cuda_forward_kernel_mul(
     const torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> a,
     const torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> b,
     torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> out,
+    torch::PackedTensorAccessor32<int,3,torch::RestrictPtrTraits> indices,
     const int n,
     const int a_lu,
     const int a_lb,
@@ -260,7 +261,26 @@ __global__ void banded_cuda_forward_kernel_mul(
       int pos = 0;
       if (o < 0 || o >= n) return;
 
-      if (mode == 3) {
+      if (mode == 1) {
+          scalar_t val = 0.0;
+          scalar_t m = -1e9;
+          int ind = -1;
+          for (int k = 0; k < self_width; ++k) {
+              pos = (i + (k - a_lu));
+              k2 = (pos - o) + b_lu;
+              if (k2 < 0 || k2 >= b_width) continue;
+              if (pos < 0 || pos >= n) continue;
+
+              scalar_t v = a[batch][i][k] + b[batch][o][k2];
+              if (v > m) {
+                  m = v;
+                  ind = i;
+              }
+          }
+          out[batch][i][j] = m;
+          indices[n][row][col] = ind;
+
+      } else if (mode == 3) {
           scalar_t val = 0.0;
           for (int k = 0; k < self_width; ++k) {
               pos = (i + (k - a_lu));
@@ -272,6 +292,7 @@ __global__ void banded_cuda_forward_kernel_mul(
           }
           out[batch][i][j] = val;
       } else if (mode == 0) {
+
           scalar_t val = 0.0;
           scalar_t m = -1e9;
           for (int k = 0; k < self_width; ++k) {
@@ -332,9 +353,9 @@ __global__ void banded_cuda_backward_kernel_mul(
       } else if (mode == 0) {
           for (int k = 0; k < gradout_width; ++k) {
               const int pos = i + (k - result_lu);
+              if (pos < 0 || pos >= n) continue;
               const int k2 = (o - pos) + b_lu;
               if (k2 < 0 || k2 >= b_lu + b_lb +1) continue;
-              if (pos < 0 || pos >= n) continue;
 
               scalar_t v = a[batch][i][j] + b[batch][pos][k2] - part[batch][i][k];
               val += exp(v) * grad_output[batch][i][k];
@@ -517,9 +538,11 @@ std::vector<torch::Tensor> banded_cuda_forward(
                       new_size / threads + 1,
                       batch_size);
 
-  // Dispatch
-  /* if (mode == 0) { */
-    // Mat Mul
+    auto options2 = torch::TensorOptions()
+            .dtype(torch::kInt)
+            .device(torch::kCUDA, a.device().index());
+    auto indices = torch::zeros({batch_size, a_size, b_size}, options2);
+
     AT_DISPATCH_FLOATING_TYPES(a.type(), "banded_forward_cuda", ([&] {
                 banded_cuda_forward_kernel_mul<scalar_t><<<blocks, threads_per_block>>>(
                     a.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
@@ -530,7 +553,7 @@ std::vector<torch::Tensor> banded_cuda_forward(
                     mode);
 
             } ) );
-    return {out};
+    return {out, indices};
 
 
 
