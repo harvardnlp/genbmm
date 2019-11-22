@@ -314,7 +314,7 @@ class BandedLogMul(torch.autograd.Function):
     def forward(ctx, a, a_lu, a_ld, b, b_lu, b_ld, o_lu, o_ld):
         a = a.contiguous()
         b = b.contiguous()
-        out, = _genbmm.forward_band(a, a_lu, a_ld,
+        out, _ = _genbmm.forward_band(a, a_lu, a_ld,
                                     b, b_lu, b_ld, 0)
         ctx.save_for_backward(a, b, out,
                               torch.LongTensor([a_lu, a_ld, b_lu, b_ld, o_lu, o_ld]))
