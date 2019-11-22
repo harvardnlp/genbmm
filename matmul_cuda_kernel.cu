@@ -548,7 +548,7 @@ std::vector<torch::Tensor> banded_cuda_forward(
                     a.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
                     b.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
                     out.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
-                    indices.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
+                    indices.packed_accessor32<int,3,torch::RestrictPtrTraits>(),
                     a_size, a_lu, a_lb, b_lu, b_lb,
                     out_lu, out_lb,
                     mode);
