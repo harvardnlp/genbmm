@@ -278,7 +278,7 @@ __global__ void banded_cuda_forward_kernel_mul(
               }
           }
           out[batch][i][j] = m;
-          indices[n][row][col] = ind;
+          indices[batch][i][j] = ind;
 
       } else if (mode == 3) {
           scalar_t val = 0.0;
