@@ -68,17 +68,38 @@ class BandedMatrix:
         ).fill_(self.fill)
         return data
 
-    def band_shift(self):
+    def band_shift(self, t):
+        if t ==0:
+            return self
         batch, n, off = self.data.shape
+
+        pad = torch.zeros(batch, n, abs(t),
+                          dtype=self.data.dtype,
+                          device=self.data.device).fill_(self.fill)
+        if t > 0:
+            v = torch.cat([self.data[:, :, t:], pad], 2)
+        else:
+            v = torch.cat([pad, self.data[:, :, :t]], 2)
+
         return BandedMatrix(
-            torch.cat(
-                [self.data[:, :, 1:],
-                 torch.zeros(batch, n, 1, dtype=self.data.dtype, device=self.data.device).fill_(self.fill)], 2
-            ),
-            self.lu - 1,
-            self.ld + 1,
+            v,
+            self.lu + t,
+            self.ld - t,
             self.fill,
         )
+
+
+    # def band_shift(self):
+    #     batch, n, off = self.data.shape
+    #     return BandedMatrix(
+    #         torch.cat(
+    #             [self.data[:, :, 1:],
+    #              torch.zeros(batch, n, 1, dtype=self.data.dtype, device=self.data.device).fill_(self.fill)], 2
+    #         ),
+    #         self.lu - 1,
+    #         self.ld + 1,
+    #         self.fill,
+    #     )
 
     def band_unshift(self):
         batch, n, off = self.data.shape
@@ -91,14 +112,21 @@ class BandedMatrix:
             self.fill,
         )
 
-    def col_shift(self):
+
+    def col_shift(self, t):
+        if t == 0: return self
         batch, n, off = self.data.shape
+        pad = torch.zeros(batch, abs(t), off,
+                          dtype=self.data.dtype,
+                          device=self.data.device).fill_(self.fill)
+        if t > 0:
+            v = torch.cat([self.data[:, t:, :], pad], 1)
+        else:
+            v = torch.cat([pad, self.data[:, :t, :]], 1)
         return BandedMatrix(
-            torch.cat(
-                [self.data[:, 1:, :], torch.zeros(batch, 1, off, dtype=self.data.dtype, device=self.data.device).fill_(self.fill)], 1
-            ),
-            self.lu - 1,
-            self.ld + 1,
+            v,
+            self.lu - t,
+            self.ld + t,
             self.fill,
         )
 
@@ -106,7 +134,10 @@ class BandedMatrix:
         batch, n, off = self.data.shape
         return BandedMatrix(
             torch.cat(
-                [torch.zeros(batch, 1, off, dtype=self.data.dtype, device=self.data.device).fill_(self.fill), self.data[:, :-1, :]], 1
+                [torch.zeros(batch, 1, off,
+                             dtype=self.data.dtype,
+                             device=self.data.device).fill_(self.fill),
+                 self.data[:, :-1, :]], 1
             ),
             self.lu + 1,
             self.ld - 1,
