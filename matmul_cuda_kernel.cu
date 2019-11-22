@@ -541,13 +541,14 @@ std::vector<torch::Tensor> banded_cuda_forward(
     auto options2 = torch::TensorOptions()
             .dtype(torch::kInt)
             .device(torch::kCUDA, a.device().index());
-    auto indices = torch::zeros({batch_size, a_size, b_size}, options2);
+    auto indices = torch::zeros({batch_size, a_size, new_size}, options2);
 
     AT_DISPATCH_FLOATING_TYPES(a.type(), "banded_forward_cuda", ([&] {
                 banded_cuda_forward_kernel_mul<scalar_t><<<blocks, threads_per_block>>>(
                     a.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
                     b.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
                     out.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
+                    indices.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
                     a_size, a_lu, a_lb, b_lu, b_lb,
                     out_lu, out_lb,
                     mode);
