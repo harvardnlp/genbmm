@@ -180,6 +180,18 @@ class BandedMatrix:
         else:
             return self.multiply_log_simple(other)
 
+    def multiply_max(self, other):
+        if has_cuda:
+            batch, n, off = self.data.shape
+            assert other.data.shape[1] == n
+            lu = self.lu + other.ld
+            ld = self.ld + other.lu
+            out = bandedmaxbmm(self.data, self.lu, self.ld, other.data, other.lu,
+                               other.ld, lu, ld)
+            return BandedMatrix(out, lu, ld, self.fill)
+        else:
+            return self.multiply_max_simple(other)
+
     def multiply_simple(self, other):
         batch, n, off = self.data.shape
         assert other.data.shape[1] == n
@@ -207,6 +219,38 @@ class BandedMatrix:
                     val += self.data[:, i, k] * other.data[:, o, k2]
                 data[:, i, j] = val
         return result
+
+    def multiply_max_simple(self, other):
+        batch, n, off = self.data.shape
+        assert other.data.shape[1] == n
+
+        lu = self.lu + other.ld
+        ld = self.ld + other.lu
+        data = self._new(lu, ld)
+        result = BandedMatrix(data, lu, ld, self.fill)
+
+        for i in range(n):
+            for j in range(result.width):
+                o = i + (j - result.lu)
+                if o < 0 or o >= n:
+                    continue
+
+
+                val = torch.zeros(batch)
+                m = torch.zeros(batch).fill_(-1e9)
+                for k in range(self.width):
+                    pos = i + (k - self.lu)
+                    if pos < 0 or pos >= n:
+                        continue
+
+                    k2 = (pos - o) + other.lu
+                    if k2 < 0 or k2 >= other.width:
+                        continue
+                    m = torch.max(m, self.data[:, i, k] + other.data[:, o, k2])
+
+                data[:, i, j] = m
+        return result
+
 
     def multiply_log_simple(self, other):
         batch, n, off = self.data.shape
@@ -345,5 +389,44 @@ class BandedLogMul(torch.autograd.Function):
         grad_b = BandedMatrix(grad_b, b_ld, b_lu).data
         return grad_a, None, None, grad_b, None, None, None, None
 
+
+class BandedMaxMul(torch.autograd.Function):
+    @staticmethod
+    def forward(ctx, a, a_lu, a_ld, b, b_lu, b_ld, o_lu, o_ld):
+        a = a.contiguous()
+        b = b.contiguous()
+        out, indices = _genbmm.forward_band(a, a_lu, a_ld,
+                                      b, b_lu, b_ld, 1)
+        ctx.save_for_backward(a, b, indices.float(),
+                              torch.LongTensor([a_lu, a_ld, b_lu, b_ld, o_lu, o_ld]))
+        return out
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        a, b, switches, bands = ctx.saved_tensors
+        a_lu, a_ld, b_lu, b_ld, o_lu, o_ld = bands.tolist()
+        a = BandedMatrix(a, a_lu, a_ld, -1e9)
+        b = BandedMatrix(b, b_lu, b_ld, -1e9)
+        grad_output = BandedMatrix(grad_output, o_lu, o_ld, -1e9)
+        switches = BandedMatrix(switches.float(), o_lu, o_ld, -1e9)
+
+        grad_a, = _genbmm.backward_band(
+            a.data, a.lu, a.ld,
+            b.data, b.lu, b.ld,
+            grad_output.data.contiguous(), switches.data, 1
+        )
+        grad_a = BandedMatrix(grad_a, a_lu, a_ld).data
+
+        grad_b, = _genbmm.backward_band(
+            b.data.contiguous(), b.lu, b.ld,
+            a.data.contiguous(), a.lu, a.ld,
+            grad_output.transpose().data.contiguous(),
+            switches.transpose().data.contiguous(), 1
+        )
+        grad_b = BandedMatrix(grad_b, b_ld, b_lu).data
+        return grad_a, None, None, grad_b, None, None, None, None
+
+
 # bandedbmm = BandedMul.apply
 bandedlogbmm = BandedLogMul.apply
+bandedmaxbmm = BandedMaxMul.apply

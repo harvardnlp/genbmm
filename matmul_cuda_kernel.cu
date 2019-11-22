@@ -350,6 +350,18 @@ __global__ void banded_cuda_backward_kernel_mul(
               if (pos < 0 || pos >= n) continue;
               val += b[batch][pos][k2] * grad_output[batch][i][k];
           }
+      } else if (mode == 1) {
+          // Max
+          for (int k = 0; k < gradout_width; ++k) {
+              const int pos = i + (k - result_lu);
+              const int k2 = (o - pos) + b_lu;
+              if (k2 < 0 || k2 >= b_lu + b_lb +1) continue;
+              if (pos < 0 || pos >= n) continue;
+
+              scalar_t v = (j == part[batch][i][k]) ? 1 : 0;
+              val += v * grad_output[batch][i][k];
+          }
+
       } else if (mode == 0) {
           for (int k = 0; k < gradout_width; ++k) {
               const int pos = i + (k - result_lu);
