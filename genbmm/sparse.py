@@ -429,10 +429,9 @@ class BandedMaxMul(torch.autograd.Function):
         a = BandedMatrix(a, a_lu, a_ld, -1e9).transpose()
         b = BandedMatrix(b, b_lu, b_ld, -1e9).transpose()
 
-        _, indices2 = _genbmm.forward_band(b.data, b.lu, b.ld,
-                                           a.data, a.lu, a.ld,
+        _, indices2 = _genbmm.forward_band(b.data.contiguous(), b.lu, b.ld,
+                                           a.data.contiguous(), a.lu, a.ld,
                                            1)
-
 
         ctx.save_for_backward(a, b, indices, indices2,
                               torch.LongTensor([a_lu, a_ld, b_lu, b_ld, o_lu, o_ld]))
