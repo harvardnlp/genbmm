@@ -317,6 +317,7 @@ __global__ void banded_cuda_forward_kernel_mul(
 }
 
 
+
 template <typename scalar_t>
 __global__ void banded_cuda_backward_kernel_mul(
     torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> grad_a,
