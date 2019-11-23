@@ -274,7 +274,7 @@ __global__ void banded_cuda_forward_kernel_mul(
               scalar_t v = a[batch][i][k] + b[batch][o][k2];
               if (v > m) {
                   m = v;
-                  ind = i;
+                  ind = k;
               }
           }
           out[batch][i][j] = m;
