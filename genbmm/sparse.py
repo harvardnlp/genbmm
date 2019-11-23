@@ -455,7 +455,7 @@ class BandedMaxMul(torch.autograd.Function):
             b.data.contiguous(), b.lu, b.ld,
             a.data.contiguous(), a.lu, a.ld,
             grad_output.transpose().data.contiguous(),
-            switches2.transpose().data.contiguous(), 1
+            switches2.data.contiguous(), 1
         )
 
         return grad_a, None, None, grad_b, None, None, None, None
