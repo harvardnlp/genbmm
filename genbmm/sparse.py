@@ -48,10 +48,6 @@ class Transpose(torch.autograd.Function):
         lu, ld = val.tolist()
         return repdiag(grad_output.flip(-1), ld, lu), None, None
 
-
-
-
-
 class BandedMatrix:
     def __init__(self, data, lu, ld, fill=0):
         batch, n, off = data.shape
@@ -212,7 +208,7 @@ class BandedMatrix:
             return self.multiply_log_simple(other)
 
     def multiply_max(self, other):
-        if has_cuda:
+        if has_cuda and other.data.is_cuda:
             batch, n, off = self.data.shape
             assert other.data.shape[1] == n
             lu = self.lu + other.ld
@@ -427,7 +423,7 @@ class BandedMaxMul(torch.autograd.Function):
         a = a.contiguous()
         b = b.contiguous()
         out, indices = _genbmm.forward_band(a, a_lu, a_ld,
-                                      b, b_lu, b_ld, 1)
+                                            b, b_lu, b_ld, 1)
         ctx.save_for_backward(a, b, indices.float(),
                               torch.LongTensor([a_lu, a_ld, b_lu, b_ld, o_lu, o_ld]))
         return out
