@@ -1,5 +1,9 @@
 import torch
-import _genbmm
+try:
+    import _genbmm
+except ImportError:
+    pass
+
 
 class LogMatMul(torch.autograd.Function):
     @staticmethod
@@ -14,6 +18,7 @@ class LogMatMul(torch.autograd.Function):
         grad_a, grad_b = _genbmm.backward(a, b, grad_output.contiguous(), out, 0)
         return grad_a, grad_b
 
+
 class MaxMatMul(torch.autograd.Function):
     @staticmethod
     def forward(ctx, a, b):
@@ -24,8 +29,11 @@ class MaxMatMul(torch.autograd.Function):
     @staticmethod
     def backward(ctx, grad_output):
         a, b, switches = ctx.saved_tensors
-        grad_a, grad_b = _genbmm.backward(a, b, grad_output.contiguous(), switches.float(), 1)
+        grad_a, grad_b = _genbmm.backward(
+            a, b, grad_output.contiguous(), switches.float(), 1
+        )
         return grad_a, grad_b
+
 
 class SampleMatMul(torch.autograd.Function):
     @staticmethod
@@ -37,8 +45,13 @@ class SampleMatMul(torch.autograd.Function):
     @staticmethod
     def backward(ctx, grad_output):
         a, b, switches = ctx.saved_tensors
-        grad_a, grad_b = _genbmm.backward(a, b, grad_output.contiguous(), switches.float(), 2)
+        grad_a, grad_b = _genbmm.backward(
+            a, b, grad_output.contiguous(), switches.float(), 2
+        )
         return grad_a, grad_b
+
+
+
 
 logbmm = LogMatMul.apply
 maxbmm = MaxMatMul.apply
