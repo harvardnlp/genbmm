@@ -97,14 +97,14 @@ def test_sparse3(batch, n, lu, ld):
     b2, _ = banddiag(x2, lu - 1, ld + 1)
     banded_x2 = BandedMatrix(b2, lu - 1, ld + 1)
 
-    assert torch.isclose(banded_x2.data, banded_x.col_shift().data).all()
+    assert torch.isclose(banded_x2.data, banded_x.col_shift(1).data).all()
 
     x2 = torch.cat([torch.zeros(batch, n, 1), x[:, :, :-1]], 2)
     b2, _ = banddiag(x2, lu + 1, ld - 1)
     banded_x2 = BandedMatrix(b2, lu + 1, ld - 1)
 
-    print(banded_x2.data, banded_x.col_unshift().data)
-    assert torch.isclose(banded_x2.data, banded_x.col_unshift().data).all()
+    print(banded_x2.data, banded_x.col_shift(-1).data)
+    assert torch.isclose(banded_x2.data, banded_x.col_shift(-1).data).all()
 
     start = torch.rand(batch, n, n)
     band, _ = banddiag(start, lu, ld)
@@ -114,12 +114,12 @@ def test_sparse3(batch, n, lu, ld):
     b2 = bmm(banded_x, banded_y)
     assert torch.isclose(torch.bmm(x, y), b2.to_dense()).all()
 
-    b2 = bmm(banded_x.col_shift(), banded_y.transpose())
+    b2 = bmm(banded_x.col_shift(1), banded_y.transpose())
     assert torch.isclose(
         torch.bmm(x[:, :, 1:], y[:, :, :-1].transpose(-2, -1)), b2.to_dense()
     ).all()
 
-    b2 = bmm(banded_x.col_unshift(), banded_y.transpose())
+    b2 = bmm(banded_x.col_shift(-1), banded_y.transpose())
     assert torch.isclose(
         torch.bmm(x[:, :, :-1], y[:, :, 1:].transpose(-2, -1)), b2.to_dense()
     ).all()

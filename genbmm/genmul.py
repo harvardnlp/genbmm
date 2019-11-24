@@ -1,4 +1,5 @@
 import torch
+
 try:
     import _genbmm
 except ImportError:
@@ -49,8 +50,6 @@ class SampleMatMul(torch.autograd.Function):
             a, b, grad_output.contiguous(), switches.float(), 2
         )
         return grad_a, grad_b
-
-
 
 
 logbmm = LogMatMul.apply
