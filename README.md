@@ -1,6 +1,19 @@
 # genbmm
 
-Cuda Kernels for generalized matrix multiplication in pytorch.
+This library is a collection of specialized matrix multiply operations implemented in PyTorch. It was developed to provide operators needed for [PyTorch-Struct](https://github.com/harvardnlp/pytorch-struct). 
+
+The library has two main components. Currently it only supports CUDA operations.  
+
+* Generalized matrix-multiplication with gradients (log-space, max, sample)
+* Banded sparse matrices
+
+
+## Quickstart 
+
+```python
+!pip install -qU git+https://github.com/harvardnlp/genbmm
+```
+### Generalized Matrix Multiplication
 
 ```python
 
@@ -37,4 +50,11 @@ c2 = (a + b).logsumexp(-2)
 sample_a, sample_b = torch.autograd.grad(c.sum(), (a, b))
 # c2 = (a + b).softmax(-2).sample(-2)
 ```
+
+### Banded Sparse Matrices
+
+See notebooks. 
+
+
+
 
