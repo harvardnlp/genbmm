@@ -1,5 +1,7 @@
 # genbmm
 
+<img src="band">
+
 This library is a collection of specialized matrix multiply operations implemented in PyTorch. It was developed to provide operators needed for [PyTorch-Struct](https://github.com/harvardnlp/pytorch-struct). 
 
 The library has two main components. Currently it only supports CUDA operations.  
@@ -53,7 +55,7 @@ sample_a, sample_b = torch.autograd.grad(c.sum(), (a, b))
 
 ### Banded Sparse Matrices
 
-See notebooks. 
+See https://nbviewer.jupyter.org/github/harvardnlp/genbmm/blob/master/notebooks/Sparse.ipynb. 
 
 
 
