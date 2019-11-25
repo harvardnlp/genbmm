@@ -17,6 +17,9 @@ The library has currently has two components. It only supports CUDA operations.
 ```
 ### Generalized Matrix Multiplication
 
+Computing matrix multiplies over non-standard semi-rings in PyTorch requires creating large intermediary terms with views. This is particularly bad because they are stored internally for backprop. This library implements some alternative matrix multiplies in CUDA to avoid this issue. 
+
+
 ```python
 
 import genbmm
