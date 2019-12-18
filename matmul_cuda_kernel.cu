@@ -6,9 +6,16 @@
 
 #include <curand.h>
 #include <curand_kernel.h>
+
+
+#define TPB 32
+
 namespace {
 
-    // FORWARD KERNELS
+
+
+
+// FORWARD KERNELS
 
 template <typename scalar_t>
 __global__ void matmul_cuda_forward_kernel(
@@ -20,13 +27,14 @@ __global__ void matmul_cuda_forward_kernel(
     const int b_size
     ) {
 
+  __shared__ scalar_t s[TPB * TPB];
+
   const int n = blockIdx.z;
   const int row = threadIdx.x + blockIdx.x * blockDim.x;
   const int col = threadIdx.y + blockIdx.y * blockDim.y;
 
   if (row < a_size && col < b_size) {
       scalar_t val = 0.0;
-
       scalar_t m = -1e9;
       for (int i = 0; i < in_size; ++i) {
          scalar_t v = a[n][row][i] + b[n][i][col];
@@ -382,6 +390,7 @@ __global__ void banded_cuda_backward_kernel_mul(
 
 
 // MATMUL FORWARD DISPATCH
+
 
 std::vector<torch::Tensor> matmul_cuda_forward(
     torch::Tensor a,
