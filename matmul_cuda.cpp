@@ -8,10 +8,6 @@ std::vector<torch::Tensor> matmul_cuda_forward(
     torch::Tensor b,
     int mode);
 
-std::vector<torch::Tensor> cky_cuda_forward(
-    torch::Tensor a,
-    int mode);
-
 std::vector<torch::Tensor> matmul_cuda_backward(
         torch::Tensor a,
         torch::Tensor b,
@@ -54,13 +50,6 @@ std::vector<torch::Tensor> matmul_forward(
   CHECK_INPUT(b);
 
   return matmul_cuda_forward(a, b, mode);
-}
-
-std::vector<torch::Tensor> cky_forward(
-    torch::Tensor a,
-    int mode) {
-  CHECK_INPUT(a);
-  return cky_cuda_forward(a, mode);
 }
 
 
@@ -117,5 +106,4 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   m.def("backward", &matmul_backward, "Log-Matmul backward (CUDA)");
   m.def("forward_band", &banded_forward, "Banded Log-Matmul forward (CUDA)");
   m.def("backward_band", &banded_backward, "Banded Log-Matmul backward (CUDA)");
-  m.def("forward_cky", &cky_forward, "CKY forward (CUDA)");
 }

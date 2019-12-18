@@ -24,8 +24,7 @@ __global__ void matmul_cuda_forward_kernel(
     torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> out,
     const int in_size,
     const int a_size,
-    const int b_size
-    ) {
+    const int b_size) {
 
   __shared__ scalar_t sA[TPB * TPB];
   __shared__ scalar_t sB[TPB * TPB];
@@ -45,7 +44,6 @@ __global__ void matmul_cuda_forward_kernel(
   scalar_t m = -1e9;
 
   for (int q = 0; q < bpg; q++) {
-
       sA[tx * TPB + ty] = a[batch][row][ty + q * TPB];
       sB[tx * TPB + ty] = b[batch][tx + q * TPB][col];
 
@@ -58,7 +56,6 @@ __global__ void matmul_cuda_forward_kernel(
       __syncthreads();
   }
   for (int q = 0; q < bpg; q++) {
-
       sA[tx * TPB + ty] = a[batch][row][ty + q * TPB];
       sB[tx * TPB + ty] = b[batch][tx + q * TPB][col];
       __syncthreads();
