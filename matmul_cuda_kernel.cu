@@ -46,12 +46,12 @@ __global__ void matmul_cuda_forward_kernel(
 
   for (int q = 0; q < bpg; q++) {
 
-      sA[tx, ty] = a[row, ty + q * TPB];
-      sB[tx, ty] = b[tx + q * TPB, col];
+      sA[tx * TPB + ty] = a[row, ty + q * TPB];
+      sB[tx * TPB + ty] = b[tx + q * TPB, col];
 
       __syncthreads();
       for (int i = 0; i < TPB; ++i) {
-          scalar_t v = sA[batch][tx][i] + sB[batch][i][ty];
+          scalar_t v = sA[tx * TPB + i] + sB[i * TPB + ty];
           if (v > m)
               m = v;
       }
@@ -59,13 +59,13 @@ __global__ void matmul_cuda_forward_kernel(
   }
   for (int q = 0; q < bpg; q++) {
       __syncthreads();
-      sA[tx, ty] = a[row, ty + q * TPB];
-      sB[tx, ty] = b[tx + q * TPB, col];
+      sA[tx * TPB + ty] = a[row, ty + q * TPB];
+      sB[tx * TPB + ty] = b[tx + q * TPB, col];
 
       __syncthreads();
 
       for (int i = 0; i < TPB; ++i) {
-          scalar_t v = sA[batch][tx][i] + sB[batch][i][ty];
+          scalar_t v = sA[tx * TPB + i] + sB[i * TPB + ty];
           val += exp(v - m);
       }
   }
