@@ -27,27 +27,43 @@ __global__ void matmul_cuda_forward_kernel(
     const int b_size
     ) {
 
-  __shared__ scalar_t s[TPB * TPB];
+  __shared__ scalar_t sA[TPB * TPB];
+  __shared__ scalar_t sB[TPB * TPB];
 
-  const int n = blockIdx.z;
+  const int batch = blockIdx.z;
   const int row = threadIdx.x + blockIdx.x * blockDim.x;
   const int col = threadIdx.y + blockIdx.y * blockDim.y;
+  const int tx = threadIdx.x;
+  const int ty = threadIdx.y;
 
-  if (row < a_size && col < b_size) {
-      scalar_t val = 0.0;
-      scalar_t m = -1e9;
-      for (int i = 0; i < in_size; ++i) {
-         scalar_t v = a[n][row][i] + b[n][i][col];
-         if (v > m) {
-             m = v;
-         }
+  const int bpg = blockDim.x;
+
+  if (!(row < a_size && col < b_size))
+      return;
+
+  scalar_t val = 0.0;
+  scalar_t m = -1e9;
+
+  for (int q = 0; q < bpg; q++) {
+      __syncthreads();
+      sA[tx, ty] = a[row, ty + q * TPB];
+      sB[tx, ty] = b[tx + q * TPB, col];
+
+      __syncthreads();
+
+      for (int i = 0; i < TPB; ++i) {
+          scalar_t v = sA[batch][tx][i] + sB[batch][i][ty];
+          if (v > m)
+              m = v;
       }
-      for (int i = 0; i < in_size; ++i) {
-         scalar_t v = a[n][row][i] + b[n][i][col];
-         val += exp(v - m);
+      for (int i = 0; i < TPB; ++i) {
+          scalar_t v = sA[batch][tx][i] + sB[batch][i][ty];
+          val += exp(v - m);
       }
-      out[n][row][col] = log(val) + m;
+      __syncthreads();
   }
+  out[n][row][col] = log(val) + m;
+
 }
 
 template <typename scalar_t>
