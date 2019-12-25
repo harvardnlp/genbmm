@@ -80,6 +80,7 @@ __global__ void matmul_cuda_forward_kernel(
           val += exp(v - m);
       }
       __syncthreads();
+
   }
   if (row < a_size && col < b_size)
       out[batch][row][col] = log(val) + m;
