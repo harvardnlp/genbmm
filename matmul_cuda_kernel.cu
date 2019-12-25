@@ -32,7 +32,7 @@ __global__ void matmul_cuda_forward_kernel(
   const int tx = threadIdx.x;
   const int ty = threadIdx.y;
 
-  const int bpg = blockDim.x;
+  const int bpg = gridDim.x;
 
   if (row >= a_size && col >= b_size)
       return;
