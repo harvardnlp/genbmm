@@ -41,12 +41,12 @@ __global__ void matmul_cuda_forward_kernel(
   __syncthreads();
 
   for (int q = 0; q < inner_blocks; q++) {
-      if (ty + q * TPB < inner_size) {
+      if (ty + q * TPB < in_size) {
           sA[tx * TPB + ty] = a[batch][row][ty + q * TPB];
       } else {
           sA[tx * TPB + ty] = -1e9;
       }
-      if (tx + q * TPB < inner_size) {
+      if (tx + q * TPB < in_size) {
           sB[tx * TPB + ty] = b[batch][tx + q * TPB][col];
       } else {
           sB[tx * TPB + ty] = -1e9;
@@ -62,13 +62,13 @@ __global__ void matmul_cuda_forward_kernel(
   }
   scalar_t val = 0.0;
   for (int q = 0; q < inner_blocks; q++) {
-      if (ty + q * TPB < inner_size) {
+      if (ty + q * TPB < in_size) {
           sA[tx * TPB + ty] = a[batch][row][ty + q * TPB];
       } else {
           sA[tx * TPB + ty] = -1e9;
       }
 
-      if (tx + q * TPB < inner_size) {
+      if (tx + q * TPB < in_size) {
           sB[tx * TPB + ty] = b[batch][tx + q * TPB][col];
       } else {
           sB[tx * TPB + ty] = -1e9;
