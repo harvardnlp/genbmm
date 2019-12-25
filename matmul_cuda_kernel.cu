@@ -290,19 +290,70 @@ __global__ void banded_cuda_forward_kernel_mul(
     const int a_lb,
     const int b_lu,
     const int b_lb,
-    const int result_lu,
-    const int result_lb,
+    const int c_lu,
+    const int c_lb,
     const int mode
     ) {
 
   const int batch = blockIdx.z;
   const int i = threadIdx.x + blockIdx.x * blockDim.x;
   const int j = threadIdx.y + blockIdx.y * blockDim.y;
+  const int tx = threadIdx.x;
+  const int ty = threadIdx.y;
 
-  if (i < n && j < result_lu + result_lb + 1) {
-      const int self_width = a_lu + a_lb + 1;
-      const int b_width = b_lu + b_lb + 1;
-      const int o =  i + (j - result_lu);
+  const int a_width = a_lu + a_lb + 1;
+  const int b_width = b_lu + b_lb + 1;
+  const int c_width = c_lu + c_lb + 1;
+
+  // b position.
+  const int o =  i + (j - c_lu);
+
+
+  if (mode == 3) {
+      int k2, pos;
+      if (o < 0 || o >= n) return;
+      scalar_t val = 0.0;
+
+      __syncthreads();
+      int q = 0;
+
+      int load_a = ty + q * TPB;
+      if (load_a < a_width) {
+          sA[tx * TPB + ty] = a[batch][i][load_a];
+      } else {
+          sA[tx * TPB + ty] = -1e9;
+      }
+
+      int load_b = tx + q * TPB;
+      pos = (i + (k - a_lu));
+      k2 = (pos - o) + b_lu;
+      if ((k2 < 0 || k2 >= b_width) || (pos < 0 || pos >= n)) {
+          sB[tx * TPB + ty] = -1e9;
+      } else {
+          sB[tx * TPB + ty] = b[batch][o][load_b];
+      }
+
+      __syncthreads();
+
+      for (int k = 0; k < a_width; ++k) {
+          /* pos = (i + (k - a_lu)); */
+          /* k2 = (pos - o) + b_lu; */
+          /* if (k2 < 0 || k2 >= b_width) continue; */
+          /* if (pos < 0 || pos >= n) continue; */
+
+          /* /\* val += a[batch][i][k] * b[batch][o][k2]; *\/ */
+          val += sA[tx * TPB + k] * sB[k * TPB + ty];
+      }
+
+      __syncthreads();
+
+      if (i < n && j < c_width)
+          out[batch][i][j] = val;
+      return;
+  }
+
+
+  if (i < n && j < c_lu + c_lb + 1) {
       int k2 = 0;
       int pos = 0;
       if (o < 0 || o >= n) return;
@@ -311,7 +362,7 @@ __global__ void banded_cuda_forward_kernel_mul(
           scalar_t val = 0.0;
           scalar_t m = -1e9;
           int ind = -1;
-          for (int k = 0; k < self_width; ++k) {
+          for (int k = 0; k < a_width; ++k) {
               pos = (i + (k - a_lu));
               k2 = (pos - o) + b_lu;
               if (k2 < 0 || k2 >= b_width) continue;
@@ -326,22 +377,11 @@ __global__ void banded_cuda_forward_kernel_mul(
           out[batch][i][j] = m;
           indices[batch][i][j] = ind;
 
-      } else if (mode == 3) {
-          scalar_t val = 0.0;
-          for (int k = 0; k < self_width; ++k) {
-              pos = (i + (k - a_lu));
-              k2 = (pos - o) + b_lu;
-              if (k2 < 0 || k2 >= b_width) continue;
-              if (pos < 0 || pos >= n) continue;
-
-              val += a[batch][i][k] * b[batch][o][k2];
-          }
-          out[batch][i][j] = val;
       } else if (mode == 0) {
 
           scalar_t val = 0.0;
           scalar_t m = -1e9;
-          for (int k = 0; k < self_width; ++k) {
+          for (int k = 0; k < a_width; ++k) {
               pos = (i + (k - a_lu));
               if (pos < 0 || pos >= n) continue;
               k2 = (pos - o) + b_lu;
@@ -350,7 +390,7 @@ __global__ void banded_cuda_forward_kernel_mul(
               scalar_t v = a[batch][i][k] + b[batch][o][k2];
               if (v > m) m = v;
           }
-          for (int k = 0; k < self_width; ++k) {
+          for (int k = 0; k < a_width; ++k) {
               pos = (i + (k - a_lu));
               if (pos < 0 || pos >= n) continue;
               k2 = (pos - o) + b_lu;
@@ -376,8 +416,8 @@ __global__ void banded_cuda_backward_kernel_mul(
     const int a_lb,
     const int b_lu,
     const int b_lb,
-    const int result_lu,
-    const int result_lb,
+    const int c_lu,
+    const int c_lb,
     const int mode) {
 
   const int batch = blockIdx.z;
@@ -387,11 +427,11 @@ __global__ void banded_cuda_backward_kernel_mul(
   if (i < n && j < a_lu + a_lb + 1) {
       const int o = i + (j - a_lu);
       scalar_t val = 0.0;
-      const int gradout_width = result_lu + result_lb + 1;
+      const int gradout_width = c_lu + c_lb + 1;
 
       if (mode == 3) {
           for (int k = 0; k < gradout_width; ++k) {
-              const int pos = i + (k - result_lu);
+              const int pos = i + (k - c_lu);
               const int k2 = (o - pos) + b_lu;
               if (k2 < 0 || k2 >= b_lu + b_lb +1) continue;
               if (pos < 0 || pos >= n) continue;
@@ -400,7 +440,7 @@ __global__ void banded_cuda_backward_kernel_mul(
       } else if (mode == 1) {
           // Max
           for (int k = 0; k < gradout_width; ++k) {
-              const int pos = i + (k - result_lu);
+              const int pos = i + (k - c_lu);
               const int k2 = (o - pos) + b_lu;
               if (k2 < 0 || k2 >= b_lu + b_lb +1) continue;
               if (pos < 0 || pos >= n) continue;
@@ -411,7 +451,7 @@ __global__ void banded_cuda_backward_kernel_mul(
 
       } else if (mode == 0) {
           for (int k = 0; k < gradout_width; ++k) {
-              const int pos = i + (k - result_lu);
+              const int pos = i + (k - c_lu);
               if (pos < 0 || pos >= n) continue;
               const int k2 = (o - pos) + b_lu;
               if (k2 < 0 || k2 >= b_lu + b_lb +1) continue;
