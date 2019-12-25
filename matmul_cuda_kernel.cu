@@ -332,7 +332,7 @@ __global__ void banded_cuda_forward_kernel_mul(
       if ((k2 < 0 || k2 >= b_width) || (pos < 0 || pos >= n)) {
           sB[tx * TPB + ty] = -1e9;
       } else {
-          sB[tx * TPB + ty] = b[batch][o][load_b];
+          sB[tx * TPB + ty] = b[batch][o][k2];
       }
 
       __syncthreads();
