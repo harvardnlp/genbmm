@@ -66,8 +66,8 @@ __global__ void matmul_cuda_forward_kernel(
       }
       __syncthreads();
   }
-
-  out[batch][row][col] = log(val) + m;
+  if (row < a_size && col < b_size)
+      out[batch][row][col] = log(val) + m;
 
   return;
 }
