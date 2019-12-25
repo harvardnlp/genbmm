@@ -1,8 +1,10 @@
 # genbmm
 
-This library is a collection of specialized matrix multiply operations implemented in PyTorch. It was developed to provide operators needed for [PyTorch-Struct](https://github.com/harvardnlp/pytorch-struct). 
+<img src="download.png">
 
-The library has two main components. Currently it only supports CUDA operations.  
+This library is a collection of missing matrix-multiply like operations for PyTorch. It was developed to provide operators needed for [PyTorch-Struct](https://github.com/harvardnlp/pytorch-struct). 
+
+The library has currently has two components. It only supports CUDA operations.  
 
 * Generalized matrix-multiplication with gradients (log-space, max, sample)
 * Banded sparse matrices
@@ -14,6 +16,9 @@ The library has two main components. Currently it only supports CUDA operations.
 !pip install -qU git+https://github.com/harvardnlp/genbmm
 ```
 ### Generalized Matrix Multiplication
+
+Computing matrix multiplies over non-standard semi-rings in PyTorch requires creating large intermediary terms with views. This is particularly bad because they are stored internally for backprop. This library implements some alternative matrix multiplies in CUDA to avoid this issue. 
+
 
 ```python
 
@@ -53,7 +58,7 @@ sample_a, sample_b = torch.autograd.grad(c.sum(), (a, b))
 
 ### Banded Sparse Matrices
 
-See notebooks. 
+See https://nbviewer.jupyter.org/github/harvardnlp/genbmm/blob/master/notebooks/Sparse.ipynb. 
 
 
 
