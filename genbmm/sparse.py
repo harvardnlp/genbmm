@@ -90,6 +90,20 @@ class BandedMatrix:
 
         return BandedMatrix(v, self.lu + t, self.ld - t, self.fill)
 
+    def band_pad(self, t):
+        if t == 0:
+            return self
+        batch, n, off = self.data.shape
+
+        pad = torch.zeros(
+            batch, n, abs(t), dtype=self.data.dtype, device=self.data.device
+        ).fill_(self.fill)
+
+        v = torch.cat([pad, self.data, pad], 2)
+
+        return BandedMatrix(v, self.lu + t, self.ld + t, self.fill)
+
+
     # def band_shift(self):
     #     batch, n, off = self.data.shape
     #     return BandedMatrix(
