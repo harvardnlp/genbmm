@@ -294,6 +294,8 @@ __global__ void banded_cuda_forward_kernel_mul(
     const int c_lb,
     const int mode
     ) {
+  __shared__ scalar_t sA[TPB * TPB];
+  __shared__ scalar_t sB[TPB * TPB];
 
   const int batch = blockIdx.z;
   const int i = threadIdx.x + blockIdx.x * blockDim.x;
@@ -325,7 +327,7 @@ __global__ void banded_cuda_forward_kernel_mul(
       }
 
       int load_b = tx + q * TPB;
-      pos = (i + (k - a_lu));
+      pos = (i + (load_b - a_lu));
       k2 = (pos - o) + b_lu;
       if ((k2 < 0 || k2 >= b_width) || (pos < 0 || pos >= n)) {
           sB[tx * TPB + ty] = -1e9;
@@ -344,7 +346,6 @@ __global__ void banded_cuda_forward_kernel_mul(
           /* /\* val += a[batch][i][k] * b[batch][o][k2]; *\/ */
           val += sA[tx * TPB + k] * sB[k * TPB + ty];
       }
-
       __syncthreads();
 
       if (i < n && j < c_width)
