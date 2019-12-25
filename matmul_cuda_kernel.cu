@@ -41,7 +41,7 @@ __global__ void matmul_cuda_forward_kernel(
       return;
 
   scalar_t val = 0.0;
-  scalar_t m = -1e8;
+  scalar_t m = -1e7;
 
   for (int q = 0; q < bpg; q++) {
       sA[tx * TPB + ty] = a[batch][row][ty + q * TPB];
