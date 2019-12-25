@@ -12,9 +12,6 @@
 
 namespace {
 
-
-
-
 // FORWARD KERNELS
 
 template <typename scalar_t>
@@ -37,11 +34,12 @@ __global__ void matmul_cuda_forward_kernel(
 
   const int bpg = blockDim.x;
 
-  if (!(row < a_size && col < b_size))
+  if (row >= a_size && col >= b_size)
       return;
 
-  scalar_t val = 0.0;
-  scalar_t m = -1e7;
+
+  scalar_t m = -1e9;
+  __syncthreads();
 
   for (int q = 0; q < bpg; q++) {
       sA[tx * TPB + ty] = a[batch][row][ty + q * TPB];
@@ -55,7 +53,9 @@ __global__ void matmul_cuda_forward_kernel(
       }
       __syncthreads();
   }
+  scalar_t val = 0.0;
   for (int q = 0; q < bpg; q++) {
+
       sA[tx * TPB + ty] = a[batch][row][ty + q * TPB];
       sB[tx * TPB + ty] = b[batch][tx + q * TPB][col];
       __syncthreads();
@@ -66,6 +66,7 @@ __global__ void matmul_cuda_forward_kernel(
       }
       __syncthreads();
   }
+
   out[batch][row][col] = log(val) + m;
 
   return;
