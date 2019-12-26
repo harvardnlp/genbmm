@@ -338,13 +338,13 @@ __global__ void banded_cuda_forward_kernel_mul(
 
       scalar_t val = 0.0;
       for (int k = 0; k < a_width; ++k) {
-          pos = (i + (k - a_lu));
-          k2 = (pos - o) + b_lu;
-          if (k2 < 0 || k2 >= b_width) continue;
-          if (pos < 0 || pos >= n) continue;
+          /* pos = (i + (k - a_lu)); */
+          /* k2 = (pos - o) + b_lu; */
+          /* if (k2 < 0 || k2 >= b_width) continue; */
+          /* if (pos < 0 || pos >= n) continue; */
 
           /* /\* val += a[batch][i][k] * b[batch][o][k2]; *\/ */
-          val += sA[tx * TPB + k] * sB[tx * TPB + k2];
+          val += sA[tx * TPB + k] * sB[tx * TPB + k + ty];
       }
       __syncthreads();
 
