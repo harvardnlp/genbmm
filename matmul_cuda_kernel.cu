@@ -325,7 +325,7 @@ __global__ void banded_cuda_forward_kernel_mul(
           sA[tx * TPB + ty] = 0;
       }
 
-      int load_b = tx + q * TPB;
+      int load_b = ty + q * TPB;
       pos = (i + (load_b - a_lu));
       k2 = (pos - o) + b_lu;
       if ((k2 < 0 || k2 >= b_width) || (pos < 0 || pos >= n)) {
@@ -344,7 +344,7 @@ __global__ void banded_cuda_forward_kernel_mul(
           /* if (pos < 0 || pos >= n) continue; */
 
           /* /\* val += a[batch][i][k] * b[batch][o][k2]; *\/ */
-          val += sA[tx * TPB + k] * sB[k * TPB + ty];
+          val += sA[tx * TPB + k] * sB[tx * TPB + k];
       }
       __syncthreads();
 
