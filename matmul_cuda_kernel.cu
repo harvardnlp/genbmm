@@ -361,18 +361,28 @@ __global__ void banded_cuda_forward_kernel_mul(
     const int mode
     ) {
   __shared__ scalar_t sA[TPB * TPB];
-  __shared__ scalar_t sB[TPB * TPB];
+  __shared__ scalar_t sB[TPB * 2 * TPB];
 
   const int batch = blockIdx.z;
   const int row = threadIdx.x + blockIdx.x * blockDim.x;
   const int col = threadIdx.y + blockIdx.y * blockDim.y;
+
+
+
   const int local_row = threadIdx.x;
-  const int local_col = threadIdx.y;
+  const int local_col_1 = threadIdx.y;
+  const int local_col_2 = TBP + threadIdx.y;
 
   const int a_width = a_lu + a_lb + 1;
   const int b_width = b_lu + b_lb + 1;
   const int c_width = c_lu + c_lb + 1;
-  const int real_col =  row + (col - ((c_width - 1)/2));
+  const int off_mid = (c_width - 1) / 2;
+
+  const int real_col =  row + (col - off_mid);
+  const int block_real_start_col = (blockIdx.x * blockDim.x) + (blockIdx.y * blockDim.y - off_mid);
+  const int copy_col_1 = block_real_start_col + local_col_1;
+  const int copy_col_2 = block_real_start_col + local_col_2;
+
   const int inner_blocks = int(n / TPB) + 1;
 
   const int block_start = blockIdx.x * blockDim.x - a_lu;
@@ -387,9 +397,8 @@ __global__ void banded_cuda_forward_kernel_mul(
           /* if (start > block_finish) */
           /*     continue; */
           int start = q * TPB;
+
           // Move cache over columns of A
-
-
           scalar_t v;
           int ind, off;
 
@@ -403,15 +412,24 @@ __global__ void banded_cuda_forward_kernel_mul(
           // Move cache over rows of B
           v = 0;
           ind = start + local_row;
-          off = ind - real_col + b_lu;
+          off = ind - copy_col_1 + b_lu;
           if (off >= 0 && off < b_width && ind < n)
               v = b[batch][ind][off];
-          sB[local_row * TPB + local_col] = v;
+          sB[local_row * 2 * TPB + local_col_1] = v;
+
+          v = 0;
+          ind = start + local_row;
+          off = ind - copy_col_2 + b_lu;
+          if (off >= 0 && off < b_width && ind < n)
+              v = b[batch][ind][off];
+          sB[local_row * 2 * TPB + local_col_2] = v;
+
+
           __syncthreads();
 
-          int use_col = real_col - start;
+          int use_col = real_col - block_real_start_col;
           for (int i = 0; i < TPB; ++i) {
-              val += sA[local_row * TPB + i] * sB[i * TPB + use_col];
+              val += sA[local_row * TPB + i] * sB[i * 2 * TPB + use_col];
           }
           __syncthreads();
       }
