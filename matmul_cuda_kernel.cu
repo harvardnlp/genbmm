@@ -367,8 +367,8 @@ __global__ void banded_cuda_forward_kernel_mul(
   const int row = threadIdx.x + blockIdx.x * blockDim.x;
   const int col = threadIdx.y + blockIdx.y * blockDim.y;
   const int local_row = threadIdx.x;
-  const int local_off = threadIdx.y;
-  const int local_col = local_row + (local_off - c_lu);
+  const int local_col = threadIdx.y;
+  /* const int local_col = local_row + (local_off - c_lu); */
 
   const int a_width = a_lu + a_lb + 1;
   const int b_width = b_lu + b_lb + 1;
