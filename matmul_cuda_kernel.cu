@@ -388,7 +388,7 @@ __global__ void banded_cuda_forward_kernel_mul(
           int off = row - ind + a_lu;
 
           if (off >= 0 && off < a_width)
-              v = a[batch][row][j];
+              v = a[batch][row][off];
           sA[local_row * TPB + local_col] = v;
 
           // Move cache over rows of B
