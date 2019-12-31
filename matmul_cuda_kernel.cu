@@ -414,53 +414,53 @@ __global__ void banded_cuda_forward_kernel_mul(
   }
 
 
-  if (i < n && j < c_lu + c_lb + 1) {
-      int k2 = 0;
-      int pos = 0;
-      if (o < 0 || o >= n) return;
+  /* if (i < n && j < c_lu + c_lb + 1) { */
+  /*     int k2 = 0; */
+  /*     int pos = 0; */
+  /*     if (o < 0 || o >= n) return; */
 
-      if (mode == 1) {
-          scalar_t val = 0.0;
-          scalar_t m = -1e9;
-          int ind = -1;
-          for (int k = 0; k < a_width; ++k) {
-              pos = (i + (k - a_lu));
-              k2 = (pos - o) + b_lu;
-              if (k2 < 0 || k2 >= b_width) continue;
-              if (pos < 0 || pos >= n) continue;
+  /*     if (mode == 1) { */
+  /*         scalar_t val = 0.0; */
+  /*         scalar_t m = -1e9; */
+  /*         int ind = -1; */
+  /*         for (int k = 0; k < a_width; ++k) { */
+  /*             pos = (i + (k - a_lu)); */
+  /*             k2 = (pos - o) + b_lu; */
+  /*             if (k2 < 0 || k2 >= b_width) continue; */
+  /*             if (pos < 0 || pos >= n) continue; */
 
-              scalar_t v = a[batch][i][k] + b[batch][o][k2];
-              if (v > m) {
-                  m = v;
-                  ind = k;
-              }
-          }
-          out[batch][i][j] = m;
-          indices[batch][i][j] = ind;
+  /*             scalar_t v = a[batch][i][k] + b[batch][o][k2]; */
+  /*             if (v > m) { */
+  /*                 m = v; */
+  /*                 ind = k; */
+  /*             } */
+  /*         } */
+  /*         out[batch][i][j] = m; */
+  /*         indices[batch][i][j] = ind; */
 
-      } else if (mode == 0) {
+  /*     } else if (mode == 0) { */
 
-          scalar_t val = 0.0;
-          scalar_t m = -1e9;
-          for (int k = 0; k < a_width; ++k) {
-              pos = (i + (k - a_lu));
-              if (pos < 0 || pos >= n) continue;
-              k2 = (pos - o) + b_lu;
-              if (k2 < 0 || k2 >= b_width) continue;
+  /*         scalar_t val = 0.0; */
+  /*         scalar_t m = -1e9; */
+  /*         for (int k = 0; k < a_width; ++k) { */
+  /*             pos = (i + (k - a_lu)); */
+  /*             if (pos < 0 || pos >= n) continue; */
+  /*             k2 = (pos - o) + b_lu; */
+  /*             if (k2 < 0 || k2 >= b_width) continue; */
 
-              scalar_t v = a[batch][i][k] + b[batch][o][k2];
-              if (v > m) m = v;
-          }
-          for (int k = 0; k < a_width; ++k) {
-              pos = (i + (k - a_lu));
-              if (pos < 0 || pos >= n) continue;
-              k2 = (pos - o) + b_lu;
-              if (k2 < 0 || k2 >= b_width) continue;
-              val += exp(a[batch][i][k] + b[batch][o][k2] - m);
-          }
-          out[batch][i][j] = log(val) + m;
-      }
-  }
+  /*             scalar_t v = a[batch][i][k] + b[batch][o][k2]; */
+  /*             if (v > m) m = v; */
+  /*         } */
+  /*         for (int k = 0; k < a_width; ++k) { */
+  /*             pos = (i + (k - a_lu)); */
+  /*             if (pos < 0 || pos >= n) continue; */
+  /*             k2 = (pos - o) + b_lu; */
+  /*             if (k2 < 0 || k2 >= b_width) continue; */
+  /*             val += exp(a[batch][i][k] + b[batch][o][k2] - m); */
+  /*         } */
+  /*         out[batch][i][j] = log(val) + m; */
+  /*     } */
+  /* } */
 }
 
 
