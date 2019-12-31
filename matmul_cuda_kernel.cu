@@ -29,8 +29,8 @@ __global__ void matmul_cuda_forward_kernel(
   const int batch = blockIdx.z;
   const int row = threadIdx.x + blockIdx.x * blockDim.x;
   const int col = threadIdx.y + blockIdx.y * blockDim.y;
-  const int tx = threadIdx.x;
-  const int ty = threadIdx.y;
+  const int local_row = threadIdx.x;
+  const int local_col = threadIdx.y;
 
   const int inner_blocks = int(in_size / TPB) + 1;
 
@@ -41,20 +41,25 @@ __global__ void matmul_cuda_forward_kernel(
   __syncthreads();
 
   for (int q = 0; q < inner_blocks; q++) {
-      if (ty + q * TPB < in_size) {
-          sA[tx * TPB + ty] = a[batch][row][ty + q * TPB];
-      } else {
-          sA[tx * TPB + ty] = -1e9;
-      }
-      if (tx + q * TPB < in_size) {
-          sB[tx * TPB + ty] = b[batch][tx + q * TPB][col];
-      } else {
-          sB[tx * TPB + ty] = -1e9;
-      }
+      int start = q * TPB;
 
+      // Move cache over columns of A
+      scalar_t v = -1e9;
+      int ind = start + local_col;
+      if (ind < in_size)
+          v = a[batch][row][ind];
+      sA[local_row * TPB + local_col] = v;
+
+      // Move cache over rows of A
+      v = -1e9;
+      ind = start + local_row;
+      if (ind < in_size)
+          v = b[batch][ind][col];
+      sB[local_row * TPB + local_col] = v;
       __syncthreads();
+
       for (int i = 0; i < TPB; ++i) {
-          scalar_t v = sA[tx * TPB + i] + sB[i * TPB + ty];
+          scalar_t v = sA[local_row * TPB + i] + sB[i * TPB + local_col];
           if (v > m)
               m = v;
       }
@@ -62,31 +67,92 @@ __global__ void matmul_cuda_forward_kernel(
   }
   scalar_t val = 0.0;
   for (int q = 0; q < inner_blocks; q++) {
-      if (ty + q * TPB < in_size) {
-          sA[tx * TPB + ty] = a[batch][row][ty + q * TPB];
-      } else {
-          sA[tx * TPB + ty] = -1e9;
-      }
 
-      if (tx + q * TPB < in_size) {
-          sB[tx * TPB + ty] = b[batch][tx + q * TPB][col];
-      } else {
-          sB[tx * TPB + ty] = -1e9;
-      }
+      // Move cache over columns of A
+      scalar_t v = -1e9;
+      int ind = start + local_col;
+      if (ind < in_size)
+          v = a[batch][row][ind];
+      sA[local_row * TPB + local_col] = v;
+
+      // Move cache over rows of A
+      v = -1e9;
+      ind = start + local_row;
+      if (ind < in_size)
+          v = b[batch][ind][col];
+      sB[local_row * TPB + local_col] = v;
       __syncthreads();
 
       for (int i = 0; i < TPB; ++i) {
-          scalar_t v = sA[tx * TPB + i] + sB[i * TPB + ty];
+          scalar_t v = sA[local_row * TPB + i] + sB[i * TPB + local_col];
           val += exp(v - m);
       }
       __syncthreads();
-
   }
   if (row < a_size && col < b_size)
       out[batch][row][col] = log(val) + m;
 
   return;
 }
+
+
+
+template <typename scalar_t>
+__global__ void matmul_basic_cuda_forward_kernel(
+    const torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> a,
+    const torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> b,
+    torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> out,
+    const int in_size,
+    const int a_size,
+    const int b_size) {
+
+  __shared__ scalar_t sA[TPB * TPB];
+  __shared__ scalar_t sB[TPB * TPB];
+
+  const int batch = blockIdx.z;
+  const int row = threadIdx.x + blockIdx.x * blockDim.x;
+  const int col = threadIdx.y + blockIdx.y * blockDim.y;
+  const int local_row = threadIdx.x;
+  const int local_col = threadIdx.y;
+
+  const int inner_blocks = int(in_size / TPB) + 1;
+
+  if (row >= a_size && col >= b_size)
+      return;
+
+  scalar_t val = 0.0;
+  __syncthreads();
+
+  for (int q = 0; q < inner_blocks; q++) {
+      int start = q * TPB;
+
+      // Move cache over columns of A
+      scalar_t v = 0;
+      int ind = start + local_col;
+      if (ind < in_size)
+          v = a[batch][row][ind];
+      sA[local_row * TPB + local_col] = v;
+
+      // Move cache over rows of A
+      v = 0;
+      ind = start + local_row;
+      if (ind < in_size)
+          v = b[batch][ind][col];
+      sB[local_row * TPB + local_col] = v;
+      __syncthreads();
+
+      for (int i = 0; i < TPB; ++i) {
+          val += sA[local_row * TPB + i] * sB[i * TPB + local_col];
+      }
+      __syncthreads();
+  }
+
+  if (row < a_size && col < b_size)
+      out[batch][row][col] = val;
+
+  return;
+}
+
 
 template <typename scalar_t>
 __global__ void max_cuda_forward_kernel(
@@ -298,64 +364,52 @@ __global__ void banded_cuda_forward_kernel_mul(
   __shared__ scalar_t sB[TPB * TPB];
 
   const int batch = blockIdx.z;
-  const int i = threadIdx.x + blockIdx.x * blockDim.x;
-  const int j = threadIdx.y + blockIdx.y * blockDim.y;
-  const int tx = threadIdx.x;
-  const int ty = threadIdx.y;
+  const int row = threadIdx.x + blockIdx.x * blockDim.x;
+  const int col = threadIdx.y + blockIdx.y * blockDim.y;
+  const int local_row = threadIdx.x;
+  const int local_off = threadIdx.y;
+  const int local_col = local_row + (local_off - c_lu);
 
   const int a_width = a_lu + a_lb + 1;
   const int b_width = b_lu + b_lb + 1;
   const int c_width = c_lu + c_lb + 1;
 
-  // b position.
-  const int o =  i + (j - c_lu);
 
 
   if (mode == 3) {
-      int k2, pos;
-      if (o < 0 || o >= n) return;
-
-      __syncthreads();
-      int q = 0;
-
-      int load_a = ty + q * TPB;
-      if (load_a < a_width) {
-          sA[tx * TPB + ty] = a[batch][i][load_a];
-      } else {
-          sA[tx * TPB + ty] = 0;
-      }
-
-      int load_b = ty + q * TPB;
-      if (load_b < b_width) {
-          sB[tx * TPB + ty] = b[batch][i][load_b];
-      } else {
-          sB[tx * TPB + ty] = 0;
-      }
-
-      /* pos = (i + (load_b - a_lu)); */
-      /* k2 = (pos - o) + b_lu; */
-      /* if ((k2 < 0 || k2 >= b_width) || (pos < 0 || pos >= n)) {  */
-      /*     sB[tx * TPB + ty] = 0; */
-      /* } else { */
-      /*     sB[tx * TPB + ty] = b[batch][o][k2]; */
-      /* } */
-
-      __syncthreads();
-
       scalar_t val = 0.0;
-      for (int k = 0; k < a_width; ++k) {
-          pos = (tx + (k - a_lu));
-          k2 = (pos - o) + b_lu;
-          if (k2 < 0 || k2 >= b_width) continue;
-          if (pos < 0 || pos >= n) continue;
 
-          /* val += a[batch][i][k] * b[batch][o][k2]; */
-          val += sA[tx * TPB + k] * sB[o * TPB + k2];
-      }
       __syncthreads();
+      for (int q = 0; q < inner_blocks; q++) {
+          int start = q * TPB;
+          // Move cache over columns of A
+          scalar_t v = 0;
+          int ind = start + local_col;
+          off = row - ind + a_lu;
 
-      if (i < n && j < c_width)
+          if (off >= 0 && off < a_width)
+              v = a[batch][row][j];
+          sA[local_row * TPB + local_col] = v;
+
+          // Move cache over rows of A
+          v = 0;
+          ind = start + local_row;
+
+          off = ind - col + b_lu;
+          if (off >= 0 && off < b_width)
+              v = b[batch][ind][off];
+          sB[local_row * TPB + local_col] = v;
+          __syncthreads();
+
+          for (int i = 0; i < TPB; ++i) {
+              val += sA[local_row * TPB + i] * sB[i * TPB + local_col];
+          }
+          __syncthreads();
+      }
+
+      if (row < a_size && col < b_size)
           out[batch][i][j] = val;
+
       return;
   }
 
