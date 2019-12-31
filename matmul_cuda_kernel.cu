@@ -409,7 +409,7 @@ __global__ void banded_cuda_forward_kernel_mul(
           sB[local_row * TPB + local_col] = v;
           __syncthreads();
 
-          int use_col = real_col - start
+          int use_col = real_col - start;
           for (int i = 0; i < TPB; ++i) {
               val += sA[local_row * TPB + i] * sB[i * TPB + use_col];
           }
