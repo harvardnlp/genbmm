@@ -372,16 +372,22 @@ __global__ void banded_cuda_forward_kernel_mul(
   const int local_row = threadIdx.x;
   const int local_col_1 = threadIdx.y;
   const int local_col_2 = TPB + threadIdx.y;
+  const int off_mid = c_lu;
+  // col in dense
+  const int real_col =  row + (col - off_mid);
+
+  // Left-most real col in block.
+  const int block_real_start_col = (blockIdx.x * blockDim.x) + (blockIdx.y * blockDim.y - off_mid);
+
+  // Real col to copy to cache.
+  const int copy_col_1 = block_real_start_col + local_col_1;
+  const int copy_col_2 = block_real_start_col + local_col_2;
+
 
   const int a_width = a_lu + a_lb + 1;
   const int b_width = b_lu + b_lb + 1;
   const int c_width = c_lu + c_lb + 1;
-  const int off_mid = (c_width - 1) / 2;
 
-  const int real_col =  row + (col - off_mid);
-  const int block_real_start_col = (blockIdx.x * blockDim.x) + (blockIdx.y * blockDim.y - off_mid);
-  const int copy_col_1 = block_real_start_col + local_col_1;
-  const int copy_col_2 = block_real_start_col + local_col_2;
 
   const int inner_blocks = int(n / TPB) + 1;
 
