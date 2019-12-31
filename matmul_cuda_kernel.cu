@@ -369,12 +369,10 @@ __global__ void banded_cuda_forward_kernel_mul(
   const int local_row = threadIdx.x;
   const int local_col = threadIdx.y;
 
-
-
   const int a_width = a_lu + a_lb + 1;
   const int b_width = b_lu + b_lb + 1;
   const int c_width = c_lu + c_lb + 1;
-  const int real_col =  row + (col - (c_width - 1)/2);
+  const int real_col =  row + (col - ((c_width - 1)/2));
   const int inner_blocks = int(n / TPB) + 1;
 
   const int block_start = blockIdx.x * blockDim.x - a_lu;
@@ -390,9 +388,14 @@ __global__ void banded_cuda_forward_kernel_mul(
           /*     continue; */
           int start = q * TPB;
           // Move cache over columns of A
-          scalar_t v = 0.0;
-          int ind = start + local_col;
-          int off = row - ind + a_lu;
+
+
+          scalar_t v;
+          int ind, off;
+
+          v = 0;
+          ind = start + local_col;
+          off = row - ind + a_lu;
           if (off >= 0 && off < a_width && row < n)
               v = a[batch][row][off];
           sA[local_row * TPB + local_col] = v;
@@ -406,8 +409,9 @@ __global__ void banded_cuda_forward_kernel_mul(
           sB[local_row * TPB + local_col] = v;
           __syncthreads();
 
+          int use_col = real_col - start
           for (int i = 0; i < TPB; ++i) {
-              val += sA[local_row * TPB + i] * sB[i * TPB + local_col];
+              val += sA[local_row * TPB + i] * sB[i * TPB + use_col];
           }
           __syncthreads();
       }
