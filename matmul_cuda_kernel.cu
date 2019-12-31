@@ -377,12 +377,18 @@ __global__ void banded_cuda_forward_kernel_mul(
   const int real_col =  row + (col - (c_width - 1)/2);
   const int inner_blocks = int(n / TPB) + 1;
 
+  const int block_start = blockIdx.x * blockDim.x - a_lu;
+  const int block_finish = block_start + a_width;
+
   if (mode == 3) {
       scalar_t val = 0.0;
 
       __syncthreads();
       for (int q = 0; q < inner_blocks; q++) {
-          int start = q * TPB;
+          int start = q * TPB + block_start;
+          if (start > block_finish)
+              continue;
+
           // Move cache over columns of A
           scalar_t v = 0.0;
           int ind = start + local_col;
