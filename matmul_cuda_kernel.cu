@@ -408,7 +408,7 @@ __global__ void banded_cuda_forward_kernel_mul(
 
           v = 0;
           ind = start + local_col_1;
-          off = (row - ind) + a_lu;
+          off = (ind - row) + a_lu;
           if (off >= 0 && off < a_width && row < n)
               v = a[batch][row][off];
           sA[local_row * TPB + local_col_1] = v;
