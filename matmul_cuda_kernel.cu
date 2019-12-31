@@ -397,9 +397,9 @@ __global__ void banded_cuda_forward_kernel_mul(
 
       __syncthreads();
       for (int q = 0; q < inner_blocks; q++) {
-          /* int start = q * TPB + block_start; */
-          /* if (start > block_finish) */
-          /*     continue; */
+          int start = q * TPB + block_start;
+          if (start > block_finish)
+              continue;
           int start = q * TPB;
 
           // Move cache over columns of A
