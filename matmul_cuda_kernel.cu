@@ -435,9 +435,9 @@ __global__ void banded_cuda_forward_kernel_mul(
           }
           __syncthreads();
       }
-
-      if (row < n && col < c_width)
+      if (row < n && col < c_width && real_col >= 0 && real_col < n) {
           out[batch][row][col] = val;
+      }
 
       return;
   }
