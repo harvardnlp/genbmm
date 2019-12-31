@@ -387,7 +387,7 @@ __global__ void banded_cuda_forward_kernel_mul(
           int ind = start + local_col;
           int off = row - ind + a_lu;
 
-          if (off >= 0 && off < a_width)
+          if (off >= 0 && off < a_width && row < n)
               v = a[batch][row][off];
           sA[local_row * TPB + local_col] = v;
 
@@ -396,7 +396,7 @@ __global__ void banded_cuda_forward_kernel_mul(
           ind = start + local_row;
 
           off = ind - col + b_lu;
-          if (off >= 0 && off < b_width)
+          if (off >= 0 && off < b_width && ind < n)
               v = b[batch][ind][off];
           sB[local_row * TPB + local_col] = v;
           __syncthreads();
@@ -407,7 +407,7 @@ __global__ void banded_cuda_forward_kernel_mul(
           __syncthreads();
       }
 
-      if (row < n && col < a_width)
+      if (row < n && col < c_width)
           out[batch][row][col] = val;
 
       return;
