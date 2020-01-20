@@ -14,11 +14,10 @@ namespace {
 
 // FORWARD KERNELS
 
-extern "C" __global__ void logsum_kernel0( float* __restrict__ A,  float* __restrict__ B,
-                                           float* __restrict__ C) {
+extern "C" __global__ void logsum_kernel0( float* __restrict__ A,  float* __restrict__ B,  float* __restrict__ C) {
    float M[64];
-  __shared__ float A_shared[8192];
-  __shared__ float B_shared[8192];
+  __shared__ float A_shared[4096];
+  __shared__ float B_shared[4096];
    float A_shared_local[8];
    float B_shared_local[8];
    float M2[64];
@@ -32,10 +31,14 @@ extern "C" __global__ void logsum_kernel0( float* __restrict__ A,  float* __rest
   for (int k_outer = 0; k_outer < 32; ++k_outer) {
     __syncthreads();
     for (int ax1_inner = 0; ax1_inner < 8; ++ax1_inner) {
-      A_shared[(((((int)threadIdx.y) * 256) + (ax1_inner * 32)) + ((int)threadIdx.x))] = A[((((((((int)blockIdx.z) * 1048576) + (((int)blockIdx.x) * 262144)) + (((int)threadIdx.y) * 8192)) + (ax1_inner * 1024)) + (k_outer * 32)) + ((int)threadIdx.x))];
+      for (int ax2_inner = 0; ax2_inner < 2; ++ax2_inner) {
+        A_shared[((((((int)threadIdx.y) * 256) + (ax1_inner * 32)) + (((int)threadIdx.x) * 2)) + ax2_inner)] = A[(((((((((int)blockIdx.z) * 1048576) + (((int)blockIdx.x) * 131072)) + (((int)threadIdx.y) * 8192)) + (ax1_inner * 1024)) + (k_outer * 32)) + (((int)threadIdx.x) * 2)) + ax2_inner)];
+      }
     }
     for (int ax1_inner1 = 0; ax1_inner1 < 8; ++ax1_inner1) {
-      B_shared[(((((int)threadIdx.y) * 256) + (ax1_inner1 * 32)) + ((int)threadIdx.x))] = B[((((((((int)blockIdx.z) * 1048576) + (((int)blockIdx.y) * 262144)) + (((int)threadIdx.y) * 8192)) + (ax1_inner1 * 1024)) + (k_outer * 32)) + ((int)threadIdx.x))];
+      for (int ax2_inner1 = 0; ax2_inner1 < 2; ++ax2_inner1) {
+        B_shared[((((((int)threadIdx.y) * 256) + (ax1_inner1 * 32)) + (((int)threadIdx.x) * 2)) + ax2_inner1)] = B[(((((((((int)blockIdx.z) * 1048576) + (((int)blockIdx.y) * 131072)) + (((int)threadIdx.y) * 8192)) + (ax1_inner1 * 1024)) + (k_outer * 32)) + (((int)threadIdx.x) * 2)) + ax2_inner1)];
+      }
     }
     __syncthreads();
     for (int k_inner = 0; k_inner < 32; ++k_inner) {
@@ -60,10 +63,14 @@ extern "C" __global__ void logsum_kernel0( float* __restrict__ A,  float* __rest
   for (int k2_outer = 0; k2_outer < 32; ++k2_outer) {
     __syncthreads();
     for (int ax1_inner2 = 0; ax1_inner2 < 8; ++ax1_inner2) {
-      A_shared[(((((int)threadIdx.y) * 256) + (ax1_inner2 * 32)) + ((int)threadIdx.x))] = A[((((((((int)blockIdx.z) * 1048576) + (((int)blockIdx.x) * 262144)) + (((int)threadIdx.y) * 8192)) + (ax1_inner2 * 1024)) + (k2_outer * 32)) + ((int)threadIdx.x))];
+      for (int ax2_inner2 = 0; ax2_inner2 < 2; ++ax2_inner2) {
+        A_shared[((((((int)threadIdx.y) * 256) + (ax1_inner2 * 32)) + (((int)threadIdx.x) * 2)) + ax2_inner2)] = A[(((((((((int)blockIdx.z) * 1048576) + (((int)blockIdx.x) * 131072)) + (((int)threadIdx.y) * 8192)) + (ax1_inner2 * 1024)) + (k2_outer * 32)) + (((int)threadIdx.x) * 2)) + ax2_inner2)];
+      }
     }
     for (int ax1_inner3 = 0; ax1_inner3 < 8; ++ax1_inner3) {
-      B_shared[(((((int)threadIdx.y) * 256) + (ax1_inner3 * 32)) + ((int)threadIdx.x))] = B[((((((((int)blockIdx.z) * 1048576) + (((int)blockIdx.y) * 262144)) + (((int)threadIdx.y) * 8192)) + (ax1_inner3 * 1024)) + (k2_outer * 32)) + ((int)threadIdx.x))];
+      for (int ax2_inner3 = 0; ax2_inner3 < 2; ++ax2_inner3) {
+        B_shared[((((((int)threadIdx.y) * 256) + (ax1_inner3 * 32)) + (((int)threadIdx.x) * 2)) + ax2_inner3)] = B[(((((((((int)blockIdx.z) * 1048576) + (((int)blockIdx.y) * 131072)) + (((int)threadIdx.y) * 8192)) + (ax1_inner3 * 1024)) + (k2_outer * 32)) + (((int)threadIdx.x) * 2)) + ax2_inner3)];
+      }
     }
     __syncthreads();
     for (int k2_inner = 0; k2_inner < 32; ++k2_inner) {
@@ -82,10 +89,11 @@ extern "C" __global__ void logsum_kernel0( float* __restrict__ A,  float* __rest
   }
   for (int ii_inner = 0; ii_inner < 8; ++ii_inner) {
     for (int jj_inner = 0; jj_inner < 8; ++jj_inner) {
-      C[(((((((((int)blockIdx.z) * 1048576) + (((int)blockIdx.y) * 262144)) + (((int)threadIdx.y) * 8192)) + (ii_inner * 1024)) + (((int)blockIdx.x) * 256)) + (((int)threadIdx.x) * 8)) + jj_inner)] = (__logf(M2[((ii_inner * 8) + jj_inner)]) + M[((ii_inner * 8) + jj_inner)]);
+      C[(((((((((int)blockIdx.z) * 1048576) + (((int)blockIdx.y) * 131072)) + (((int)threadIdx.y) * 8192)) + (ii_inner * 1024)) + (((int)blockIdx.x) * 128)) + (((int)threadIdx.x) * 8)) + jj_inner)] = (__logf(M2[((ii_inner * 8) + jj_inner)]) + M[((ii_inner * 8) + jj_inner)]);
     }
   }
 }
+
 
 
 
@@ -575,6 +583,9 @@ std::vector<torch::Tensor> matmul_cuda_forward(
 
   // Dispatch
   if (mode == 0) {
+      const int threads = 16;
+      const dim3 threads_per_block(threads, threads, 1);
+
       const dim3 blocks(a_size / threads,
                         b_size / threads,
                         batch_size);
