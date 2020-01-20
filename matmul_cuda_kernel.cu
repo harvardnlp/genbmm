@@ -14,7 +14,7 @@ namespace {
 
 // FORWARD KERNELS
 
-extern "C" __global__ void default_function_kernel0( float* __restrict__ A,  float* __restrict__ B,  float* __restrict__ C) {
+extern "C" __global__ void logsum_kernel0( float* __restrict__ A,  float* __restrict__ B,  float* __restrict__ C) {
    float M[64];
   __shared__ float A_shared[4096];
   __shared__ float B_shared[4096];
