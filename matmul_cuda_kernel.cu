@@ -586,8 +586,8 @@ std::vector<torch::Tensor> matmul_cuda_forward(
       const int threads = 16;
       const dim3 threads_per_block(threads, threads, 1);
 
-      const dim3 blocks(a_size / threads,
-                        b_size / threads,
+      const dim3 blocks(8,
+                        8,
                         batch_size);
 
       logsum_kernel0<<<blocks, threads_per_block>>>(a.data<float>(), b.data<float>(), out.data<float>());
