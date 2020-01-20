@@ -14,7 +14,7 @@ namespace {
 
 // FORWARD KERNELS
 
-extern "C" __global__ void logsum_kernel0( float* __restrict__ A,  float* __restrict__ B,  float* __restrict__ C) {
+extern "C" __global__ void default_function_kernel0( float* __restrict__ A,  float* __restrict__ B,  float* __restrict__ C) {
    float M[64];
   __shared__ float A_shared[4096];
   __shared__ float B_shared[4096];
@@ -23,76 +23,99 @@ extern "C" __global__ void logsum_kernel0( float* __restrict__ A,  float* __rest
    float M2[64];
    float A_shared_local1[8];
    float B_shared_local1[8];
+  #pragma unroll
   for (int ii_init = 0; ii_init < 8; ++ii_init) {
+    #pragma unroll
     for (int jj_init = 0; jj_init < 8; ++jj_init) {
       M[((ii_init * 8) + jj_init)] = -3.402823e+38f;
     }
   }
-  for (int k_outer = 0; k_outer < 32; ++k_outer) {
+  for (int k_outer = 0; k_outer < 16; ++k_outer) {
     __syncthreads();
+    #pragma unroll
     for (int ax1_inner = 0; ax1_inner < 8; ++ax1_inner) {
+      #pragma unroll
       for (int ax2_inner = 0; ax2_inner < 2; ++ax2_inner) {
-        A_shared[((((((int)threadIdx.y) * 256) + (ax1_inner * 32)) + (((int)threadIdx.x) * 2)) + ax2_inner)] = A[(((((((((int)blockIdx.z) * 1048576) + (((int)blockIdx.x) * 131072)) + (((int)threadIdx.y) * 8192)) + (ax1_inner * 1024)) + (k_outer * 32)) + (((int)threadIdx.x) * 2)) + ax2_inner)];
+        A_shared[((((((int)threadIdx.y) * 256) + (ax1_inner * 32)) + (((int)threadIdx.x) * 2)) + ax2_inner)] = A[(((((((((int)blockIdx.z) * 262144) + (((int)blockIdx.x) * 65536)) + (((int)threadIdx.y) * 4096)) + (ax1_inner * 512)) + (k_outer * 32)) + (((int)threadIdx.x) * 2)) + ax2_inner)];
       }
     }
+    #pragma unroll
     for (int ax1_inner1 = 0; ax1_inner1 < 8; ++ax1_inner1) {
+      #pragma unroll
       for (int ax2_inner1 = 0; ax2_inner1 < 2; ++ax2_inner1) {
-        B_shared[((((((int)threadIdx.y) * 256) + (ax1_inner1 * 32)) + (((int)threadIdx.x) * 2)) + ax2_inner1)] = B[(((((((((int)blockIdx.z) * 1048576) + (((int)blockIdx.y) * 131072)) + (((int)threadIdx.y) * 8192)) + (ax1_inner1 * 1024)) + (k_outer * 32)) + (((int)threadIdx.x) * 2)) + ax2_inner1)];
+        B_shared[((((((int)threadIdx.y) * 256) + (ax1_inner1 * 32)) + (((int)threadIdx.x) * 2)) + ax2_inner1)] = B[(((((((((int)blockIdx.z) * 262144) + (((int)blockIdx.y) * 65536)) + (((int)threadIdx.y) * 4096)) + (ax1_inner1 * 512)) + (k_outer * 32)) + (((int)threadIdx.x) * 2)) + ax2_inner1)];
       }
     }
     __syncthreads();
     for (int k_inner = 0; k_inner < 32; ++k_inner) {
+      #pragma unroll
       for (int ax1 = 0; ax1 < 8; ++ax1) {
         A_shared_local[ax1] = A_shared[(((((int)threadIdx.x) * 256) + (ax1 * 32)) + k_inner)];
       }
+      #pragma unroll
       for (int ax11 = 0; ax11 < 8; ++ax11) {
         B_shared_local[ax11] = B_shared[(((((int)threadIdx.y) * 256) + (ax11 * 32)) + k_inner)];
       }
+      #pragma unroll
       for (int ii = 0; ii < 8; ++ii) {
+        #pragma unroll
         for (int jj = 0; jj < 8; ++jj) {
           M[((ii * 8) + jj)] = (M[((ii * 8) + jj)]) > ((A_shared_local[jj] + B_shared_local[ii])) ? (M[((ii * 8) + jj)]) : ((A_shared_local[jj] + B_shared_local[ii]));
         }
       }
     }
   }
+  #pragma unroll
   for (int ii_init1 = 0; ii_init1 < 8; ++ii_init1) {
+    #pragma unroll
     for (int jj_init1 = 0; jj_init1 < 8; ++jj_init1) {
       M2[((ii_init1 * 8) + jj_init1)] = 0.000000e+00f;
     }
   }
-  for (int k2_outer = 0; k2_outer < 32; ++k2_outer) {
+  for (int k2_outer = 0; k2_outer < 16; ++k2_outer) {
     __syncthreads();
+    #pragma unroll
     for (int ax1_inner2 = 0; ax1_inner2 < 8; ++ax1_inner2) {
+      #pragma unroll
       for (int ax2_inner2 = 0; ax2_inner2 < 2; ++ax2_inner2) {
-        A_shared[((((((int)threadIdx.y) * 256) + (ax1_inner2 * 32)) + (((int)threadIdx.x) * 2)) + ax2_inner2)] = A[(((((((((int)blockIdx.z) * 1048576) + (((int)blockIdx.x) * 131072)) + (((int)threadIdx.y) * 8192)) + (ax1_inner2 * 1024)) + (k2_outer * 32)) + (((int)threadIdx.x) * 2)) + ax2_inner2)];
+        A_shared[((((((int)threadIdx.y) * 256) + (ax1_inner2 * 32)) + (((int)threadIdx.x) * 2)) + ax2_inner2)] = A[(((((((((int)blockIdx.z) * 262144) + (((int)blockIdx.x) * 65536)) + (((int)threadIdx.y) * 4096)) + (ax1_inner2 * 512)) + (k2_outer * 32)) + (((int)threadIdx.x) * 2)) + ax2_inner2)];
       }
     }
+    #pragma unroll
     for (int ax1_inner3 = 0; ax1_inner3 < 8; ++ax1_inner3) {
+      #pragma unroll
       for (int ax2_inner3 = 0; ax2_inner3 < 2; ++ax2_inner3) {
-        B_shared[((((((int)threadIdx.y) * 256) + (ax1_inner3 * 32)) + (((int)threadIdx.x) * 2)) + ax2_inner3)] = B[(((((((((int)blockIdx.z) * 1048576) + (((int)blockIdx.y) * 131072)) + (((int)threadIdx.y) * 8192)) + (ax1_inner3 * 1024)) + (k2_outer * 32)) + (((int)threadIdx.x) * 2)) + ax2_inner3)];
+        B_shared[((((((int)threadIdx.y) * 256) + (ax1_inner3 * 32)) + (((int)threadIdx.x) * 2)) + ax2_inner3)] = B[(((((((((int)blockIdx.z) * 262144) + (((int)blockIdx.y) * 65536)) + (((int)threadIdx.y) * 4096)) + (ax1_inner3 * 512)) + (k2_outer * 32)) + (((int)threadIdx.x) * 2)) + ax2_inner3)];
       }
     }
     __syncthreads();
     for (int k2_inner = 0; k2_inner < 32; ++k2_inner) {
+      #pragma unroll
       for (int ax12 = 0; ax12 < 8; ++ax12) {
         A_shared_local1[ax12] = A_shared[(((((int)threadIdx.x) * 256) + (ax12 * 32)) + k2_inner)];
       }
+      #pragma unroll
       for (int ax13 = 0; ax13 < 8; ++ax13) {
         B_shared_local1[ax13] = B_shared[(((((int)threadIdx.y) * 256) + (ax13 * 32)) + k2_inner)];
       }
+      #pragma unroll
       for (int ii1 = 0; ii1 < 8; ++ii1) {
+        #pragma unroll
         for (int jj1 = 0; jj1 < 8; ++jj1) {
           M2[((ii1 * 8) + jj1)] = (M2[((ii1 * 8) + jj1)] + __expf(((A_shared_local1[jj1] + B_shared_local1[ii1]) - M[((ii1 * 8) + jj1)])));
         }
       }
     }
   }
+  #pragma unroll
   for (int ii_inner = 0; ii_inner < 8; ++ii_inner) {
+    #pragma unroll
     for (int jj_inner = 0; jj_inner < 8; ++jj_inner) {
-      C[(((((((((int)blockIdx.z) * 1048576) + (((int)blockIdx.y) * 131072)) + (((int)threadIdx.y) * 8192)) + (ii_inner * 1024)) + (((int)blockIdx.x) * 128)) + (((int)threadIdx.x) * 8)) + jj_inner)] = (__logf(M2[((ii_inner * 8) + jj_inner)]) + M[((ii_inner * 8) + jj_inner)]);
+      C[(((((((((int)blockIdx.z) * 262144) + (((int)blockIdx.y) * 65536)) + (((int)threadIdx.y) * 4096)) + (ii_inner * 512)) + (((int)blockIdx.x) * 128)) + (((int)threadIdx.x) * 8)) + jj_inner)] = (__logf(M2[((ii_inner * 8) + jj_inner)]) + M[((ii_inner * 8) + jj_inner)]);
     }
   }
 }
+
 
 
 
@@ -586,8 +609,8 @@ std::vector<torch::Tensor> matmul_cuda_forward(
       const int threads = 16;
       const dim3 threads_per_block(threads, threads, 1);
 
-      const dim3 blocks(8,
-                        8,
+      const dim3 blocks(4,
+                        4,
                         batch_size);
 
       logsum_kernel0<<<blocks, threads_per_block>>>(a.data<float>(), b.data<float>(), out.data<float>());
