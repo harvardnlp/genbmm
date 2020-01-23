@@ -10,7 +10,8 @@ sys.path.append('/tvm/vta/python')
 os.environ['TVM_HOME'] = '/tvm'
 
 import tvm
-import autotvm
+from tvm import autotvm
+
 
 @autotvm.template
 def logsummul(dtype):
