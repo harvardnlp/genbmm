@@ -1,5 +1,9 @@
 import sys
 import os
+import time
+import torch
+import numpy as np
+
 sys.path.append('/tvm/python')
 sys.path.append('/tvm/topi/python')
 sys.path.append('/tvm/vta/python')
@@ -131,7 +135,7 @@ print(task.config_space)
 
 measure_option = autotvm.measure_option(
     builder=autotvm.LocalBuilder(n_parallel=5),
-    runner=autotvm.LocalRunner(number=10, repeat=3, timeout=10, min_repeat_ms=50))
+    runner=autotvm.LocalRunner(number=1, repeat=3, timeout=10, min_repeat_ms=50))
 
 
 tuner = autotvm.tuner.RandomTuner(task)
@@ -139,18 +143,6 @@ tuner.tune(n_trial=50,
            measure_option=measure_option,
            callbacks=[autotvm.callback.log_to_file('matmul.log')])
 
-
-autotvm.record.pick_best("matmul.log", "best.log")
-with autotvm.apply_history_best('best.log'):
-    with tvm.target.create("cuda"):
-        s_mult, arg_bufs = logsummul('float32')
-        mod = tvm.build(s_mult, arg_bufs, target="cuda", target_host="llvm")
-        a, b, c, = get_abc((32, 512, 512), lambda x: tvm.nd.array(x, ctx=tvm.gpu()))
-
-import time
-import torch
-import numpy as np
-# Defined in file: ./chapter_getting_started/vector_add.md
 def get_abc(shape, constructor=None):
     """Return random a, b and empty c with the same shape.
     """
@@ -161,6 +153,13 @@ def get_abc(shape, constructor=None):
     if constructor:
         a, b, c = [constructor(x) for x in (a, b, c)]
     return a, b, c
+
+autotvm.record.pick_best("matmul.log", "best.log")
+with autotvm.apply_history_best('best.log'):
+    with tvm.target.create("cuda"):
+        s_mult, arg_bufs = logsummul('float32')
+        mod = tvm.build(s_mult, arg_bufs, target="cuda", target_host="llvm")
+        a, b, c, = get_abc((32, 512, 512), lambda x: tvm.nd.array(x, ctx=tvm.gpu()))
 
 k = torch.rand(32, 512, 512).cuda()
 import time
