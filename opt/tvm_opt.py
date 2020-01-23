@@ -143,7 +143,7 @@ tuner.tune(n_trial=50,
 autotvm.record.pick_best("matmul.log", "best.log")
 with autotvm.apply_history_best('best.log'):
     with tvm.target.create("cuda"):
-        s_mult, arg_bufs = matmul('float32')
+        s_mult, arg_bufs = logsummul('float32')
         mod = tvm.build(s_mult, arg_bufs, target="cuda", target_host="llvm")
         a, b, c, = get_abc((32, 512, 512), lambda x: tvm.nd.array(x, ctx=tvm.gpu()))
 
