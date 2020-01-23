@@ -10,7 +10,7 @@ sys.path.append('/tvm/vta/python')
 os.environ['TVM_HOME'] = '/tvm'
 
 import tvm
-from tvm import autotvm
+
 
 @autotvm.template
 def logsummul(dtype):
@@ -130,45 +130,57 @@ def logsummul(dtype):
 
     return s, [A, B, C]
 
+
 task = autotvm.task.create(logsummul, args=('float32',), target='cuda', target_host="llvm")
-print(task.config_space)
-
-measure_option = autotvm.measure_option(
-    builder=autotvm.LocalBuilder(n_parallel=5),
-    runner=autotvm.LocalRunner(number=10, repeat=3, timeout=10, min_repeat_ms=50))
-
-
-tuner = autotvm.tuner.RandomTuner(task)
-tuner.tune(n_trial=100,
-           measure_option=measure_option,
-           callbacks=[autotvm.callback.log_to_file('matmul.log')])
-
-def get_abc(shape, constructor=None):
-    """Return random a, b and empty c with the same shape.
-    """
-    np.random.seed(0)
-    a = np.random.normal(size=shape).astype(np.float32)
-    b = np.random.normal(size=shape).astype(np.float32)
-    c = np.empty_like(a)
-    if constructor:
-        a, b, c = [constructor(x) for x in (a, b, c)]
-    return a, b, c
-
-autotvm.record.pick_best("matmul.log", "best.log")
 with autotvm.apply_history_best('best.log'):
     with tvm.target.create("cuda"):
         s_mult, arg_bufs = logsummul('float32')
         mod = tvm.build(s_mult, arg_bufs, target="cuda", target_host="llvm")
-        a, b, c, = get_abc((32, 512, 512), lambda x: tvm.nd.array(x, ctx=tvm.gpu()))
+from tvm.contrib.dlpack import to_pytorch_func
+logsum_pytorch = to_pytorch_func(mod)
 
-k = torch.rand(32, 512, 512).cuda()
-import time
-num_trials = 10
-start_time = time.time()
-for _ in range(num_trials):
-    #z = torch.matmul(k, k)
-    mod(a, b, c)
-torch.cuda.synchronize()
-end_time = time.time()
-op = ""
-print(f"{op}: {(end_time - start_time) / num_trials}")
+if __name__ == "__main__":
+    from tvm import autotvm
+
+    task = autotvm.task.create(logsummul, args=('float32',), target='cuda', target_host="llvm")
+    print(task.config_space)
+
+    measure_option = autotvm.measure_option(
+        builder=autotvm.LocalBuilder(n_parallel=5),
+        runner=autotvm.LocalRunner(number=10, repeat=3, timeout=10, min_repeat_ms=50))
+
+
+    tuner = autotvm.tuner.RandomTuner(task)
+    tuner.tune(n_trial=100,
+               measure_option=measure_option,
+               callbacks=[autotvm.callback.log_to_file('matmul.log')])
+
+    def get_abc(shape, constructor=None):
+        """Return random a, b and empty c with the same shape.
+        """
+        np.random.seed(0)
+        a = np.random.normal(size=shape).astype(np.float32)
+        b = np.random.normal(size=shape).astype(np.float32)
+        c = np.empty_like(a)
+        if constructor:
+            a, b, c = [constructor(x) for x in (a, b, c)]
+        return a, b, c
+
+    autotvm.record.pick_best("matmul.log", "best.log")
+    with autotvm.apply_history_best('best.log'):
+        with tvm.target.create("cuda"):
+            s_mult, arg_bufs = logsummul('float32')
+            mod = tvm.build(s_mult, arg_bufs, target="cuda", target_host="llvm")
+            a, b, c, = get_abc((32, 512, 512), lambda x: tvm.nd.array(x, ctx=tvm.gpu()))
+
+    k = torch.rand(32, 512, 512).cuda()
+    import time
+    num_trials = 10
+    start_time = time.time()
+    for _ in range(num_trials):
+        #z = torch.matmul(k, k)
+        mod(a, b, c)
+    torch.cuda.synchronize()
+    end_time = time.time()
+    op = ""
+    print(f"{op}: {(end_time - start_time) / num_trials}")
