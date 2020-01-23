@@ -135,11 +135,11 @@ print(task.config_space)
 
 measure_option = autotvm.measure_option(
     builder=autotvm.LocalBuilder(n_parallel=5),
-    runner=autotvm.LocalRunner(number=1, repeat=3, timeout=10, min_repeat_ms=50))
+    runner=autotvm.LocalRunner(number=10, repeat=3, timeout=10, min_repeat_ms=50))
 
 
 tuner = autotvm.tuner.RandomTuner(task)
-tuner.tune(n_trial=50,
+tuner.tune(n_trial=100,
            measure_option=measure_option,
            callbacks=[autotvm.callback.log_to_file('matmul.log')])
 
