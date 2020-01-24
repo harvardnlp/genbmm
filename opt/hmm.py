@@ -13,12 +13,11 @@ import tvm
 from tvm import autotvm
 
 @autotvm.template
-def hmm(dtype):
+def hmm_runner(dtype):
     #n_num_step = 128
     #n_num_hidden = 1152
     #n_batch_size = 4
     #num_step = tvm.var("num_step")
-
 
     nn = 128
     bb = 4
@@ -152,7 +151,7 @@ def hmm(dtype):
 #task = autotvm.task.create(hmm, args=('float32',), target='cuda', target_host="llvm")
 with autotvm.apply_history_best('best.log'):
     with tvm.target.create("cuda"):
-        s_mult, arg_bufs = hmm('float32')
+        s_mult, arg_bufs = hmm_runner('float32')
         mod = tvm.build(s_mult, arg_bufs, target="cuda", target_host="llvm")
 
 from tvm.contrib.dlpack import to_pytorch_func
@@ -178,7 +177,8 @@ if __name__ == "__main__":
     logging.getLogger('autotvm').setLevel(logging.DEBUG)
     logging.getLogger('autotvm').addHandler(logging.StreamHandler(sys.stdout))
 
-    task = autotvm.task.create(hmm, args=('float32',), target='cuda', target_host="llvm")
+    task = autotvm.task.create(hmm_runner, args=('float32',),
+                               target='cuda', target_host="llvm")
 
     measure_option = autotvm.measure_option(
         builder=autotvm.LocalBuilder(n_parallel=5),
