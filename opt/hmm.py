@@ -18,6 +18,8 @@ def hmm(dtype):
     #n_num_hidden = 1152
     #n_batch_size = 4
     #num_step = tvm.var("num_step")
+
+
     nn = 128
     bb = 4
     tt = 128
@@ -53,9 +55,15 @@ def hmm(dtype):
     s = tvm.create_schedule(s_scan.op)
     #tvm.lower(s, [X], simple_mode=True )
 
-    num_thread_y = 8
-    num_thread_x = 16 * 3
-    num_sm = 24
+    cfg = autotvm.get_config()
+    cfg.define_knob("y_t", [2, 8, 16])
+    cfg.define_knob("x_t", [2, 4, 8, 16])
+    cfg.define_knob("sm", [4, 8, 16, 24])
+    cfg.add_flop(1)
+
+    num_thread_y = cfg["y_t"].val
+    num_thread_x = cfg["x_t"].val * 3
+    num_sm = cfg["sm"].val
 
     PERSIST_KERNEL = False
     DETECT_GLOBAL_BARRIER = False
@@ -157,7 +165,6 @@ def fb(x):
 
     out2 = torch.zeros(time+1, batch, size).cuda()
     hmm_pytorch(x.flip(0).transpose(-2, -1).contiguous(), out2)
-
 
     marginals = torch.exp(out[:-1].view(time, batch, 1, size) +
                           out2[:-1].flip(0).view(time, batch, size, 1) +
