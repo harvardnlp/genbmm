@@ -24,7 +24,7 @@ def hmm_runner(dtype):
     tt = 128
     n = tvm.convert(nn)
     m = n
-    b = tvm.convert(bb)
+    b = tvm.variable("batch")
     t = tvm.var("num_step")
     l = n
     k = tvm.reduce_axis((0, l), name='k')
