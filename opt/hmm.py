@@ -19,8 +19,8 @@ def hmm_runner(dtype):
     #n_batch_size = 4
     #num_step = tvm.var("num_step")
 
-    nn = 128
-    bb = 4
+    nn = 512
+    bb = 32
     tt = 128
     n = tvm.convert(nn)
     m = n
