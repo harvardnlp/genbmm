@@ -151,7 +151,7 @@ from tvm.contrib.dlpack import to_pytorch_func
 hmm_pytorch = to_pytorch_func(mod)
 
 def fb(X):
-    time, batch, size = X.shape
+    time, batch, size, _ = X.shape
     out = torch.zeros(time+1, batch, size).cuda()
     hmm_pytorch(X, out)
 
