@@ -141,7 +141,7 @@ def hmm(dtype):
     s[SS2].bind(tx, thread_x)
     return s, [X]
 
-task = autotvm.task.create(hmm, args=('float32',), target='cuda', target_host="llvm")
+#task = autotvm.task.create(hmm, args=('float32',), target='cuda', target_host="llvm")
 with autotvm.apply_history_best('best.log'):
     with tvm.target.create("cuda"):
         s_mult, arg_bufs = hmm('float32')
