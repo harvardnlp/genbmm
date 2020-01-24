@@ -150,8 +150,8 @@ with autotvm.apply_history_best('best.log'):
 from tvm.contrib.dlpack import to_pytorch_func
 hmm_pytorch = to_pytorch_func(mod)
 
-def fb(X):
-    time, batch, size, _ = X.shape
+def fb(x):
+    time, batch, size, _ = x.shape
     out = torch.zeros(time+1, batch, size).cuda()
     hmm_pytorch(X, out)
 
