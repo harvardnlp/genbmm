@@ -55,9 +55,9 @@ def hmm_runner(dtype):
     #tvm.lower(s, [X], simple_mode=True )
 
     cfg = autotvm.get_config()
-    cfg.define_knob("y_t", [2, 8, 16])
-    cfg.define_knob("x_t", [2, 4, 8, 16])
-    cfg.define_knob("sm", [4, 8, 16, 24])
+    cfg.define_knob("y_t", [8])
+    cfg.define_knob("x_t", [16])
+    cfg.define_knob("sm", [24])
     cfg.add_flop(1)
 
     num_thread_y = cfg["y_t"].val
