@@ -17,7 +17,7 @@ def hmm(dtype):
     #n_num_step = 128
     #n_num_hidden = 1152
     #n_batch_size = 4
-    num_step = tvm.var("num_step")
+    #num_step = tvm.var("num_step")
     nn = 128
     bb = 4
     tt = 128
@@ -139,7 +139,7 @@ def hmm(dtype):
     tx, xi = s[SS2].split(xi, nparts=num_thread_x)
     #s[SS2].bind(ty, thread_y)
     s[SS2].bind(tx, thread_x)
-    return s, [X]
+    return s, [X, s_scan]
 
 #task = autotvm.task.create(hmm, args=('float32',), target='cuda', target_host="llvm")
 with autotvm.apply_history_best('best.log'):
