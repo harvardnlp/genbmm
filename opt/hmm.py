@@ -153,10 +153,10 @@ hmm_pytorch = to_pytorch_func(mod)
 def fb(x):
     time, batch, size, _ = x.shape
     out = torch.zeros(time+1, batch, size).cuda()
-    hmm_pytorch(X, out)
+    hmm_pytorch(x, out)
 
     out2 = torch.zeros(time+1, batch, size).cuda()
-    hmm_pytorch(X.flip(0).transpose(-2, -1).contiguous(), out2)
+    hmm_pytorch(x.flip(0).transpose(-2, -1).contiguous(), out2)
 
 
     marginals = torch.exp(out[:-1].view(time, batch, 1, size) +
