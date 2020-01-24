@@ -174,6 +174,9 @@ def fb(x):
 
 if __name__ == "__main__":
     from tvm import autotvm
+    import logging
+    logging.getLogger('autotvm').setLevel(logging.DEBUG)
+    logging.getLogger('autotvm').addHandler(logging.StreamHandler(sys.stdout))
 
     task = autotvm.task.create(hmm, args=('float32',), target='cuda', target_host="llvm")
 
