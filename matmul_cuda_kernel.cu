@@ -67,7 +67,7 @@ __global__ void matmul_cuda_forward_kernel(
   }
   scalar_t val = 0.0;
   for (int q = 0; q < inner_blocks; q++) {
-      int start = q * TPB;
+      start = q * TPB;
       // Move cache over columns of A
       scalar_t v = -1e9;
       int ind = start + local_col;
