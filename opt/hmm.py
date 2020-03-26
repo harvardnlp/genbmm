@@ -15,16 +15,16 @@ from tvm import autotvm
 
 @autotvm.template
 def hmm_runner_max(dtype):
-    nn = 1152
+    nn = 256
     bb = 32
     tt = 128
     n = tvm.convert(nn)
     m = n
-    b = tvm.var("batch")
+    b =  tvm.var("batcher")
     t = tvm.var("num_step")
     l = n
+
     k = tvm.reduce_axis((0, l), name='k')
-    k2 = tvm.reduce_axis((0, l), name='k2')
     X = tvm.placeholder((t-1, b, n, m), name="X", dtype=dtype)
 
     s_state = tvm.placeholder((t, b, n))
@@ -81,6 +81,8 @@ def hmm_runner_max(dtype):
     block_x = tvm.thread_axis((0, num_sm), "blockIdx.x")
     thread_x = tvm.thread_axis((0, num_thread_x), "threadIdx.x")
     thread_y = tvm.thread_axis((0, num_thread_y), "threadIdx.y")
+    block_z = tvm.thread_axis((0, bb), "blockIdx.z")
+
     if PERSIST_KERNEL:
         s[s_scan.op].env_threads([block_x, thread_y, thread_x])
 
@@ -88,15 +90,19 @@ def hmm_runner_max(dtype):
     tx, xi = s[s_init].split(xi, nparts=num_thread_x)
     s[s_init].bind(bx, block_x)
     s[s_init].bind(tx, thread_x)
+    s[s_init].bind(s_init.op.axis[1], block_z)
+
 
     bx, xi = s[CL].split(s[CL].op.axis[2], nparts=num_sm)
     tx, xi = s[CL].split(xi, nparts=num_thread_x)
     s[CL].bind(bx, block_x)
     s[CL].bind(tx, thread_x)
 
-    s[M].compute_at(s[CL], tx)
+    #s[M].compute_at(s[CL], tx)
     s[M].bind(s[M].op.reduce_axis[0], thread_y)
     s[MLF].compute_at(s[M], s[M].op.reduce_axis[0])
+    s[M].bind(s[M].op.axis[1], block_z)
+
 
     # Repeat
     # s[M2].compute_at(s[CL], tx)
@@ -128,6 +134,8 @@ def hmm_runner_max(dtype):
     # #s[SS2].bind(ty, thread_y)
     # s[SS2].bind(tx, thread_x)
     return s, [X, s_scan]
+
+
 
 
 @autotvm.template
@@ -302,19 +310,21 @@ with autotvm.apply_history_best('best.log'):
 from tvm.contrib.dlpack import to_pytorch_func
 hmm_pytorch_max = to_pytorch_func(mod)
 
-
 def fb_max(x):
     time, batch, size, _ = x.shape
-    out = torch.zeros(time+1, batch, size).cuda()
-    hmm_pytorch_max(x, out)
+    forward = torch.zeros(time+1, batch, size).cuda()
+    hmm_pytorch_max(x, forward)
 
-    out2 = torch.zeros(time+1, batch, size).cuda()
-    hmm_pytorch_max(x.flip(0).transpose(-2, -1).contiguous(), out2)
+    backward = torch.zeros(time+1, batch, size).cuda()
+    hmm_pytorch_max(x.flip(0).transpose(-2, -1).contiguous(), backward)
 
-    marginals = (out[:-1].view(time, batch, 1, size) +
-                 out2[:-1].flip(0).view(time, batch, size, 1) +
-                 x.view(time, batch, size, size).transpose(-2, -1))
-    return out, marginals
+    check = (forward.view(time+1, batch, size)+
+        backward.flip(0).view(time+1, batch, size))
+
+    marginals = (forward[:-1].view(time, batch, 1, size) +
+                 backward[:-1].flip(0).view(time, batch, size, 1) +
+                 x.view(time, batch, size, size).transpose(-2, -1)).transpose(-2, -1)
+    return forward, backward, marginals, check
 
 
 if __name__ == "__main__":
