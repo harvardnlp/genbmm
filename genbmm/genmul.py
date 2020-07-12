@@ -16,15 +16,10 @@ class LogMatMul(torch.autograd.Function):
     @staticmethod
     def backward(ctx, grad_output):
         a, b, out = ctx.saved_tensors
-        vals = a.exp(), b.exp(), grad_output / out.exp()
-        grad_a2 = (a + _genbmm.forward((grad_output.log()-out), b.transpose(2, 1).contiguous(), 0)[0]).exp()
-        grad_b2 =  (b + _genbmm.forward(a.transpose(2,1).contiguous(), (grad_output.log()-out), 0)[0]).exp()
-        #grad_a2 = torch.einsum("brc,bck,brk->brc", *vals)
-        # grad_b2 = torch.einsum("bkr,brc,bkc->brc", *vals)
-        # def grad(a, b, out):
-        #     return a * ((b - out).exp() * grad_output).sum(-1)
-
-        # grad_a, grad_b = _genbmm.backward(a, b, grad_output.contiguous(), out, 0)
+        grad_a2 = (a +
+                   LogMatMul.apply((grad_output.log()-out), b.transpose(2, 1).contiguous())).exp()
+        grad_b2 =  (b +
+                    LogMatMul.apply(a.transpose(2,1).contiguous(), (grad_output.log()-out))).exp()
         return grad_a2, grad_b2
 
 
