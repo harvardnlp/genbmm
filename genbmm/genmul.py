@@ -16,8 +16,14 @@ class LogMatMul(torch.autograd.Function):
     @staticmethod
     def backward(ctx, grad_output):
         a, b, out = ctx.saved_tensors
-        grad_a, grad_b = _genbmm.backward(a, b, grad_output.contiguous(), out, 0)
-        return grad_a, grad_b
+        vals = a.exp(), b.exp(), grad_output / out.exp()
+        grad_a2 = torch.einsum("brc,bck,brk->brc", *vals)
+        grad_b2 = torch.einsum("bkr,brc,bkc->brc", *vals)
+        # def grad(a, b, out):
+        #     return a * ((b - out).exp() * grad_output).sum(-1)
+
+        # grad_a, grad_b = _genbmm.backward(a, b, grad_output.contiguous(), out, 0)
+        return grad_a2, grad_b2
 
 
 class MaxMatMul(torch.autograd.Function):
