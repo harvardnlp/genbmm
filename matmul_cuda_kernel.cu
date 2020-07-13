@@ -174,7 +174,7 @@ __global__ void matmul_cuda_backward_kernel_B(
       for (int k = 0; k < a_size; ++k) {
           scalar_t m = maxes[n][k][col];
           scalar_t v = exp(a[n][k][row] + b[n][row][col] - m);
-          val += (v / (exp(part[n][row][k] -m))) * grad_output[n][k][col];
+          val += (v / (exp(part[n][k][col] -m))) * grad_output[n][k][col];
       }
       grad_b[n][row][col] = val;
   }
