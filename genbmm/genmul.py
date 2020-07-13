@@ -23,7 +23,7 @@ class LogMatMulBack(torch.autograd.Function):
 
         # grad_b, = _genbmm.backbackward(trans(b), trans(a),
         #                                trans(grad_out), trans(part), trans(maxes), trans(grad_output), 0)
-        return grad_a, grab_b, grad_2, None, None
+        return grad_a, grad_b, grad_2, None, None
 
 
 class LogMatMul(torch.autograd.Function):
