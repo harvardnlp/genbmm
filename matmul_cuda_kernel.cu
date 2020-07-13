@@ -161,7 +161,7 @@ __global__ void matmul_cuda_backbackward_kernel_A(
     const torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> maxes,
     const torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> grad_output,
     const torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> grad_output_a,
-    const torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> grad_output_b,
+
     const int in_size,
     const int a_size,
     const int b_size
@@ -207,13 +207,58 @@ __global__ void matmul_cuda_backbackward_kernel_A(
                     v = - s * s2;
                 }
                 inner += v * grad_output_a[n][row][k2];
-                inner += v * grad_output_b[n][k2][k];
             }
             val += inner * grad_output[n][row][k];
         }
         grad_a[n][row][col] = val;
     }
 }
+
+
+template <typename scalar_t>
+__global__ void matmul_cuda_backbackward_kernel_B(
+    torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> grad_b,
+    const torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> a,
+    const torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> b,
+    const torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> part,
+    const torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> maxes,
+    const torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> grad_output,
+    const torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> grad_output_a,
+
+    const int in_size,
+    const int a_size,
+    const int b_size
+                                                  ) {
+
+
+    const int n = blockIdx.z;
+
+    const int row = threadIdx.x + blockIdx.x * blockDim.x;
+    const int col = threadIdx.y + blockIdx.y * blockDim.y;
+    /* n row col k, k2=>  b, t,  r, l, s*/
+    if (row < in_size && col < b_size) {
+        scalar_t val = 0.0;
+        for (int k = 0; k < a_size; ++k) {
+            scalar_t m = maxes[n][k][col];
+            scalar_t z = exp(part[n][k][col] -m);
+            scalar_t s = exp(a[n][k][row] + b[n][row][col] - m) / z;
+            scalar_t inner = 0.0;
+            for (int k2 = 0; k2 < in_size; ++k2) {
+                scalar_t s2 = exp(a[n][k][k2] + b[n][k2][col] - m) / z;
+                scalar_t v;
+                if (row == k2) {
+                    v = s  - s * s2;
+                } else {
+                    v = - s * s2;
+                }
+                inner += v * grad_output_a[n][k][k2];
+            }
+            val += inner * grad_output[n][k][col];
+        }
+        grad_b[n][row][col] = val;
+    }
+}
+
 
 template <typename scalar_t>
 __global__ void matmul_cuda_backward_kernel_B(
@@ -532,7 +577,6 @@ std::vector<torch::Tensor> matmul_cuda_backbackward(
     torch::Tensor part,
     torch::Tensor maxes,
     torch::Tensor grad_out_a,
-    torch::Tensor grad_out_b,
     int mode) {
 
   const auto batch_size = a.size(0);
@@ -565,7 +609,18 @@ std::vector<torch::Tensor> matmul_cuda_backbackward(
                       maxes.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
                       grad_out.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
                       grad_out_a.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
-                      grad_out_b.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
+                      in_size, a_size, b_size
+                                                                                         );
+              }));
+      AT_DISPATCH_FLOATING_TYPES(a.type(), "matmul_backbackward_cuda", ([&] {
+                  matmul_cuda_backbackward_kernel_B<scalar_t><<<blocks, threads_per_block>>>(
+                      grad_b.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
+                      a.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
+                      b.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
+                      part.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
+                      maxes.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
+                      grad_out.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
+                      grad_out_a.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
                       in_size, a_size, b_size
                                                                                          );
               }));

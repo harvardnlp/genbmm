@@ -5,15 +5,24 @@ try:
 except ImportError:
     pass
 
+def trans(s):
+    return s.transpose(-2, -1).contiguous()
+
 class LogMatMulBack(torch.autograd.Function):
     @staticmethod
     def forward(ctx, a, b, grad_out, part, maxes):
-        grad_a, = _genbmm.backward(a, b, grad_output, part, maxes, 0)
+        ctx.save_for_backward(a, b, grad_out, part, maxes)
+        grad_a, = _genbmm.backward(a, b, grad_out, part, maxes, 0)
         return grad_a
 
     @staticmethod
     def backward(ctx, grad_output):
-        pass
+        a, b, grad_out, part, maxes = ctx.saved_tensors
+        grad_a, grad_b = _genbmm.backbackward(a, b, grad_out, part, maxes, grad_output, 0)
+        # grad_b, = _genbmm.backbackward(trans(b), trans(a),
+        #                                trans(grad_out), trans(part), trans(maxes), trans(grad_output), 0)
+        return grad_a, grab_b, None, None, None
+
 
 class LogMatMul(torch.autograd.Function):
     @staticmethod
@@ -25,13 +34,19 @@ class LogMatMul(torch.autograd.Function):
     @staticmethod
     def backward(ctx, grad_output):
         a, b, out, maxes = ctx.saved_tensors
-        grad_a = LogMatMulBack.apply(a, b, grad_output.transpose(-2, -1).contiguous(), out, maxes)
-        grad_b = LogMatMulBack.apply(b, a, grad_output.transpose(-2, -1).contiguous(), out.transpose(-2, -1).contiguous(), maxes.transpose(-2, -1).contiguous())
-        # grad_a = torch.einsum("brc,bck,brk->brc", a.exp(),
-        #                       b.exp(),
-        #                       grad_output.contiguous() / (out - maxes).exp())
+        grad_a = LogMatMulBack.apply(a, b, grad_output, out, maxes)
+        grad_b = LogMatMulBack.apply(trans(b), trans(a),
+                                     trans(grad_output), trans(out), trans(maxes))
 
-        return grad_a, grad_b
+        return grad_a, trans(grad_b)
+
+    # grad_a = LogMatMulBack.apply(a, b, grad_output, out, maxes)
+        # grad_b = LogMatMulBack.apply(b, a, grad_output.transpose(-2, -1).contiguous(), out.transpose(-2, -1).contiguous(), maxes.transpose(-2, -1).contiguous())
+        # # grad_a = torch.einsum("brc,bck,brk->brc", a.exp(),
+        # #                       b.exp(),
+        # #                       grad_output.contiguous() / (out - maxes).exp())
+
+        # return grad_a, grad_b
 
 
 class MaxMatMul(torch.autograd.Function):
