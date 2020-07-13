@@ -152,6 +152,35 @@ __global__ void matmul_cuda_backward_kernel_A(
   }
 }
 
+
+template <typename scalar_t>
+__global__ void matmul_cuda_backbackward_kernel_C(
+    torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> grad_a,
+    const torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> a,
+    const torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> b,
+    const torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> part,
+    const torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> maxes,
+    const torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> grad_output,
+    const int in_size,
+    const int a_size,
+    const int b_size
+    ) {
+
+  const int n = blockIdx.z;
+  const int row = threadIdx.x + blockIdx.x * blockDim.x;
+  const int col = threadIdx.y + blockIdx.y * blockDim.y;
+
+  if (row < a_size && col < b_size) {
+      scalar_t val = 0.0;
+      for (int k = 0; k < in_size; ++k) {
+          scalar_t m = maxes[n][row][k];
+          val += (exp(a[n][row][k] + b[n][k][col] - m) / (exp(part[n][row][col] -m))) * grad_output[n][row][k];
+      }
+      grad_a[n][row][col] = val;
+  }
+}
+
+
 template <typename scalar_t>
 __global__ void matmul_cuda_backbackward_kernel_A(
     torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> grad_a,
@@ -599,6 +628,13 @@ std::vector<torch::Tensor> matmul_cuda_backbackward(
                     b_size / threads2 + 1,
                     batch_size);
 
+
+  auto grad_grad = torch::zeros_like(b);
+  const int threads3 = 32;
+  const dim3 blocks3(a_size / threads3 + 1,
+                     b_size / threads3 + 1,
+                     batch_size);
+
   if (mode == 0) {
       AT_DISPATCH_FLOATING_TYPES(a.type(), "matmul_backbackward_cuda", ([&] {
                   matmul_cuda_backbackward_kernel_A<scalar_t><<<blocks, threads_per_block>>>(
@@ -624,9 +660,20 @@ std::vector<torch::Tensor> matmul_cuda_backbackward(
                       in_size, a_size, b_size
                                                                                          );
               }));
+      AT_DISPATCH_FLOATING_TYPES(a.type(), "matmul_backbackward_cuda", ([&] {
+                  matmul_cuda_backbackward_kernel_C<scalar_t><<<blocks3, threads_per_block>>>(
+                      grad_grad.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
+                      a.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
+                      b.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
+                      part.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
+                      maxes.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
+                      grad_out_a.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
+                      in_size, a_size, b_size
+                                                                                         );
+              }));
 
   }
-  return {grad_a, grad_b};
+  return {grad_a, grad_b, grad_grad};
 }
 
 // MATMUL BACKWARD DISPATCH
