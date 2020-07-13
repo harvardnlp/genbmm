@@ -8,8 +8,8 @@ except ImportError:
 class LogMatMulBack(torch.autograd.Function):
     @staticmethod
     def forward(ctx, a, b, grad_out, part, maxes):
-        grad_a, grad_b = _genbmm.backward(a, b, grad_output, part, maxes, 0)
-        return grad_a, grad_b
+        grad_a, = _genbmm.backward(a, b, grad_output, part, maxes, 0)
+        return grad_a
 
     @staticmethod
     def backward(ctx, grad_output):
@@ -25,7 +25,8 @@ class LogMatMul(torch.autograd.Function):
     @staticmethod
     def backward(ctx, grad_output):
         a, b, out, maxes = ctx.saved_tensors
-        grad_a, grad_b = LogMatMulBack.apply(a, b, grad_output.contiguous(), out, maxes)
+        grad_a = LogMatMulBack.apply(a, b, grad_output.transpose(-2, -1).contiguous(), out, maxes)
+        grad_b = LogMatMulBack.apply(b, a, grad_output.transpose(-2, -1).contiguous(), out.transpose(-2, -1).contiguous(), maxes.transpose(-2, -1).contiguous())
         # grad_a = torch.einsum("brc,bck,brk->brc", a.exp(),
         #                       b.exp(),
         #                       grad_output.contiguous() / (out - maxes).exp())
