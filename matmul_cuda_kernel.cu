@@ -613,7 +613,7 @@ std::vector<torch::Tensor> matmul_cuda_backbackward(
                                                                                          );
               }));
       AT_DISPATCH_FLOATING_TYPES(a.type(), "matmul_backbackward_cuda", ([&] {
-                  matmul_cuda_backbackward_kernel_B<scalar_t><<<blocks, threads_per_block>>>(
+                  matmul_cuda_backbackward_kernel_B<scalar_t><<<blocks2, threads_per_block>>>(
                       grad_b.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
                       a.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
                       b.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
