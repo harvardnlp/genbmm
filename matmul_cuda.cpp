@@ -16,6 +16,16 @@ std::vector<torch::Tensor> matmul_cuda_backward(
         torch::Tensor maxes,
         int mode);
 
+std::vector<torch::Tensor> matmul_cuda_backbackward(
+        torch::Tensor a,
+        torch::Tensor b,
+        torch::Tensor grad_output,
+        torch::Tensor part,
+        torch::Tensor maxes,
+        torch::Tensor grad_out_a,
+        torch::Tensor grad_out_b,
+        int mode);
+
 std::vector<torch::Tensor> banded_cuda_forward(
     torch::Tensor a,
     int a_lu,
@@ -35,6 +45,7 @@ std::vector<torch::Tensor> banded_cuda_backward(
         torch::Tensor grad_output,
         torch::Tensor part,
         int mode);
+
 
 // C++ interface
 
@@ -66,6 +77,23 @@ std::vector<torch::Tensor> matmul_backward(
   CHECK_INPUT(part);
   CHECK_INPUT(maxes);
   return matmul_cuda_backward(a, b, grad_output, part, maxes, mode);
+}
+
+std::vector<torch::Tensor> matmul_backbackward(
+        torch::Tensor a,
+        torch::Tensor b,
+        torch::Tensor grad_output,
+        torch::Tensor part,
+        torch::Tensor maxes,
+        torch::Tensor grad_out_a,
+        torch::Tensor grad_out_b,
+        int mode) {
+  CHECK_INPUT(a);
+  CHECK_INPUT(b);
+  CHECK_INPUT(grad_output);
+  CHECK_INPUT(part);
+  CHECK_INPUT(maxes);
+  return matmul_cuda_backward(a, b, grad_output, part, maxes, grad_out_a, grad_out_b, mode);
 }
 
 
