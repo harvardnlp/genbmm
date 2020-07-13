@@ -57,12 +57,14 @@ std::vector<torch::Tensor> matmul_backward(
         torch::Tensor b,
         torch::Tensor grad_output,
         torch::Tensor part,
+        torch::Tensor maxes,
         int mode) {
   CHECK_INPUT(a);
   CHECK_INPUT(b);
   CHECK_INPUT(grad_output);
   CHECK_INPUT(part);
-  return matmul_cuda_backward(a, b, grad_output, part, mode);
+  CHECK_INPUT(maxes);
+  return matmul_cuda_backward(a, b, grad_output, part, maxes, mode);
 }
 
 

@@ -9,15 +9,14 @@ except ImportError:
 class LogMatMul(torch.autograd.Function):
     @staticmethod
     def forward(ctx, a, b):
-        out, = _genbmm.forward(a, b, 0)
-        ctx.save_for_backward(a, b, out)
+        out, maxes = _genbmm.forward(a, b, 0)
+        ctx.save_for_backward(a, b, out, maxes)
         return out
 
     @staticmethod
     def backward(ctx, grad_output):
-        a, b, out = ctx.saved_tensors
-        vals = a.exp(), b.exp(), grad_output / out.exp()
-        grad_a, grad_b = _genbmm.backward(a, b, grad_output.contiguous(), out, 0)
+        a, b, out, maxes = ctx.saved_tensors
+        grad_a, grad_b = _genbmm.backward(a, b, grad_output.contiguous(), out, maxes, 0)
         return grad_a, grad_b
 
 
