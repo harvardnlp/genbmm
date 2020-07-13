@@ -141,9 +141,19 @@ __global__ void matmul_cuda_backward_kernel_A(
 
   if (row < a_size && col < in_size) {
       scalar_t val = 0.0;
+      scalar_t total = 0.0;
+      scalar_t m = -1e9;
       for (int k = 0; k < b_size; ++k) {
-         scalar_t v = a[n][row][col] + b[n][col][k] - part[n][row][k];
-         val += exp(v) * grad_output[n][row][k];
+          scalar_t v =  a[n][row][col] + b[n][col][k];
+          if (v > m)
+              m = v;
+      }
+      for (int k = 0; k < b_size; ++k) {
+          total += exp(a[n][row][col] + b[n][col][k] - m);
+      }
+      for (int k = 0; k < b_size; ++k) {
+         scalar_t v = exp(a[n][row][col] + b[n][col][k] - m);
+         val += (v / total) * grad_output[n][row][k];
       }
       grad_a[n][row][col] = val;
   }
@@ -166,9 +176,20 @@ __global__ void matmul_cuda_backward_kernel_B(
 
   if (row < in_size && col < b_size) {
       scalar_t val = 0.0;
+      scalar_t total = 0.0;
+      scalar_t m = -1e9;
       for (int k = 0; k < a_size; ++k) {
-         scalar_t v = a[n][k][row] + b[n][row][col] - part[n][k][col];
-         val += exp(v) * grad_output[n][k][col];
+          scalar_t v = a[n][k][row] + b[n][row][col];
+          if (v > m)
+              m = v;
+      }
+
+      for (int k = 0; k < a_size; ++k) {
+          total += exp(a[n][k][row] + b[n][row][col] - m);
+      }
+      for (int k = 0; k < a_size; ++k) {
+          scalar_t v = exp(a[n][k][row] + b[n][row][col] - m);
+          val += (v / total) * grad_output[n][k][col];
       }
       grad_b[n][row][col] = val;
   }
