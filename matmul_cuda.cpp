@@ -13,6 +13,7 @@ std::vector<torch::Tensor> matmul_cuda_backward(
         torch::Tensor b,
         torch::Tensor grad_output,
         torch::Tensor part,
+        torch::Tensor maxes,
         int mode);
 
 std::vector<torch::Tensor> banded_cuda_forward(
