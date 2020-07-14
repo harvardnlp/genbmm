@@ -83,4 +83,9 @@ def test_sparse(batch, n, lu, ld):
     h = torch.autograd.grad((g[0].cuda(), g[1].cuda()), (back, start, start2),
                             (back2[0].cuda(), back2[1].cuda()))
     for i, (v1, v2) in enumerate(zip(h, h2)):
+        print(i)
+        print(v1.shape)
+        print(v2.shape)
+        print(v1)
+        print(v2)
         assert torch.isclose(v1, v2, 1e-2).all(), "Round: " + str(i)
