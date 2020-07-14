@@ -79,8 +79,8 @@ def test_sparse(batch, n, lu, ld):
     back2 = (torch.rand(g[0].shape),
              torch.rand(g[1].shape))
 
-    h2 = torch.autograd.grad((g2[0], g2[1]), (g2, start, start2), (back2[0], back2[1]))
-    h = torch.autograd.grad((g[0].cuda(), g[1].cuda()), (g, start, start2),
+    h2 = torch.autograd.grad((g2[0], g2[1]), (back, start, start2), (back2[0], back2[1]))
+    h = torch.autograd.grad((g[0].cuda(), g[1].cuda()), (back, start, start2),
                             (back2[0].cuda(), back2[1].cuda()))
     for i, (v1, v2) in enumerate(zip(h, h2)):
         assert torch.isclose(v1, v2, 1e-2).all(), "Round: " + str(i)
