@@ -429,20 +429,20 @@ class BandedMul(torch.autograd.Function):
         return grad_a, None, None, grad_b, None, None, None, None
 
 
-class BandedLogMulBack(torch.autograd.Function):
-    @staticmethod
-    def forward(ctx, a, b, grad_out, part, maxes):
-        ctx.save_for_backward(a, b, grad_out, part, maxes)
-        grad_a, = _genbmm.backward(a, b, grad_out, part, maxes, 0)
-        return grad_a
+# class BandedLogMulBack(torch.autograd.Function):
+#     @staticmethod
+#     def forward(ctx, a, b, grad_out, part, maxes):
+#         ctx.save_for_backward(a, b, grad_out, part, maxes)
+#         grad_a, = _genbmm.backward(a, b, grad_out, part, maxes, 0)
+#         return grad_a
 
-    @staticmethod
-    def backward(ctx, grad_output):
-        a, b, grad_out, part, maxes = ctx.saved_tensors
-        grad_a, grad_b, grad_grad = _genbmm.backbackward(a, b, grad_out.contiguous(),
-                                                         part, maxes, grad_output.contiguous(), 0)
+#     @staticmethod
+#     def backward(ctx, grad_output):
+#         a, b, grad_out, part, maxes = ctx.saved_tensors
+#         grad_a, grad_b, grad_grad = _genbmm.backbackward(a, b, grad_out.contiguous(),
+#                                                          part, maxes, grad_output.contiguous(), 0)
 
-        return grad_a, grad_b, grad_grad, None, None
+#         return grad_a, grad_b, grad_grad, None, None
 
 
 class BandedLogMulBack(torch.autograd.Function):
@@ -507,7 +507,7 @@ class BandedLogMul(torch.autograd.Function):
 
         maxes = BandedMatrix(maxes.float(), o_lu, o_ld, -1e9)
         grad_output = BandedMatrix(grad_output.float(), o_lu, o_ld, -1e9)
-        switchs = BandedMatrix(switches.float(), o_lu, o_ld, -1e9)
+        switches = BandedMatrix(switches.float(), o_lu, o_ld, -1e9)
 
         bands2 = torch.LongTensor([ b_lu, b_ld, a_lu, a_ld, o_lu, o_ld])
         grad_b = BandedLogMulBack.apply(b, a,
