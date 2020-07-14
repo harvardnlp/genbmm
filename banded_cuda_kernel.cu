@@ -16,8 +16,7 @@ __global__ void banded_cuda_forward_kernel_mul(
     const torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> b,
     torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> out,
     torch::PackedTensorAccessor32<int,3,torch::RestrictPtrTraits> indices,
-torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> maxes,
-
+    torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> maxes,
     const int n,
     const int a_lu,
     const int a_lb,
@@ -249,30 +248,30 @@ __global__ void banded_cuda_backbackward_kernel_C(
     const int i = threadIdx.x + blockIdx.x * blockDim.x;
     const int j = threadIdx.y + blockIdx.y * blockDim.y;
 
-    if (i < n && j < result_lu + result_lb + 1) {
-        const int self_width = a_lu + a_lb + 1;
-        const int b_width = b_lu + b_lb + 1;
-        const int o =  i + (j - result_lu);
-        int k2 = 0;
-        int pos = 0;
-        if (o < 0 || o >= n) return;
-        scalar_t val = 0.0;
+    // if (i < n && j < result_lu + result_lb + 1) {
+    //     const int self_width = a_lu + a_lb + 1;
+    //     const int b_width = b_lu + b_lb + 1;
+    //     const int o =  i + (j - result_lu);
+    //     int k2 = 0;
+    //     int pos = 0;
+    //     if (o < 0 || o >= n) return;
+    //     scalar_t val = 0.0;
 
 
-        for (int k = 0; k < self_width; ++k) {
-            pos = (i + (k - a_lu));
-            k2 = (pos - o) + b_lu;
-            if (k2 < 0 || k2 >= b_width) continue;
-            if (pos < 0 || pos >= n) continue;
+    //     for (int k = 0; k < self_width; ++k) {
+    //         pos = (i + (k - a_lu));
+    //         k2 = (pos - o) + b_lu;
+    //         if (k2 < 0 || k2 >= b_width) continue;
+    //         if (pos < 0 || pos >= n) continue;
 
-            scalar_t m = maxes[batch][i][k];
-            val += (exp(a[batch][i][k] + b[batch][o][k2] - m) / (exp(part[batch][i][j] -m)))
-                    * grad_output[batch][i][k];
+    //         scalar_t m = maxes[batch][i][k];
+    //         val += (exp(a[batch][i][k] + b[batch][o][k2] - m) / (exp(part[batch][i][j] -m)))
+    //                 * grad_output[batch][i][k];
 
-            //val = a[batch][i][k] + b[batch][o][k2];
-        }
-        out[batch][i][j] = val;
-    }
+    //         //val = a[batch][i][k] + b[batch][o][k2];
+    //     }
+    //     out[batch][i][j] = val;
+    // }
 }
 
 }
