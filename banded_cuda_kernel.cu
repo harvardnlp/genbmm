@@ -15,8 +15,9 @@ __global__ void banded_cuda_forward_kernel_mul(
     const torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> a,
     const torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> b,
     torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> out,
-    torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> maxes,
-    torch::PackedTensorAccessor32<int,3,torch::RestrictPtrTraits> indices,
+    torch::PackedTensorAccessor32<int,3,torch::RestrictPtrTraits> indices,  
+torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> maxes,   
+
     const int n,
     const int a_lu,
     const int a_lb,
