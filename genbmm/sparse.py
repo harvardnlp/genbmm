@@ -479,7 +479,7 @@ class BandedLogMulBack(torch.autograd.Function):
         part = BandedMatrix(part.float(), o_lu, o_ld, -1e9)
         maxes = BandedMatrix(maxes.float(), o_lu, o_ld, -1e9)
         grad_out = BandedMatrix(grad_out.float(), o_lu, o_ld, -1e9)
-
+        print(a.data.shape, b.data.shape, a.lu, a.ld, b.lu, b.ld)
         grad_a, grad_b, grad_grad = _genbmm.backbackward_band(
             a.data, a.lu, a.ld,
             b.data, b.lu, b.ld,
