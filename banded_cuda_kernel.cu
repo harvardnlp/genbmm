@@ -191,9 +191,9 @@ __global__ void banded_cuda_backbackward_kernel_A(
             scalar_t b_val = b[batch][pos][k2]
         // End over right side.
 
-            scalar_t m = maxes[batch][i][k];
-            scalar_t z = exp(part[batch][i][k] -m);
-            scalar_t s = exp(a_val + b_val - m) / z;
+            scalar_t mx = maxes[batch][i][k];
+            scalar_t z = exp(part[batch][i][k] -mx);
+            scalar_t s = exp(a_val + b_val - mx) / z;
             scalar_t inner = 0.0;
 
 
@@ -207,7 +207,7 @@ __global__ void banded_cuda_backbackward_kernel_A(
 
                 scalar_t a_inner_val = a[batch][i][m];
                 scalar_t b_inner_val = b[batch][o][m2];
-                scalar_t s2 = exp(a_inner_val + b_inner_val - m) / z;
+                scalar_t s2 = exp(a_inner_val + b_inner_val - mx) / z;
                 scalar_t v;
                 if (col == k2) {
                     v = s  - s * s2;
@@ -262,9 +262,9 @@ __global__ void banded_cuda_backbackward_kernel_B(
             scalar_t a_val = a[batch][pos][k2]
         // End over left side.
 
-            scalar_t m = maxes[batch][pos][k];
-            scalar_t z = exp(part[batch][pos][k] -m);
-            scalar_t s = exp(a_val + b_val - m) / z;
+            scalar_t mx = maxes[batch][pos][k];
+            scalar_t z = exp(part[batch][pos][k] - mx);
+            scalar_t s = exp(a_val + b_val - mx) / z;
             scalar_t inner = 0.0;
 
 
@@ -278,7 +278,7 @@ __global__ void banded_cuda_backbackward_kernel_B(
 
                 scalar_t a_inner_val = a[batch][pos][m];
                 scalar_t b_inner_val = b[batch][i][m2];
-                scalar_t s2 = exp(a_inner_val + b_inner_val - m) / z;
+                scalar_t s2 = exp(a_inner_val + b_inner_val - mx) / z;
                 scalar_t v;
                 if (col == k2) {
                     v = s  - s * s2;
