@@ -175,7 +175,7 @@ __global__ void banded_cuda_backbackward_kernel_A(
 
     if (i < n && j < a_lu + a_lb + 1) {
         const int o = i + (j - a_lu);
-
+        const int b_width = b_lu + b_lb + 1;
         scalar_t a_val = a[batch][i][j];
         // End Left sided.
 
@@ -188,7 +188,7 @@ __global__ void banded_cuda_backbackward_kernel_A(
             const int k2 = (o - pos) + b_lu;
             if (k2 < 0 || k2 >= b_lu + b_lb +1) continue;
             if (pos < 0 || pos >= n) continue;
-            scalar_t b_val = b[batch][pos][k2]
+            scalar_t b_val = b[batch][pos][k2];
         // End over right side.
 
             scalar_t mx = maxes[batch][i][k];
@@ -243,7 +243,8 @@ __global__ void banded_cuda_backbackward_kernel_B(
     const int batch = blockIdx.z;
     const int i = threadIdx.x + blockIdx.x * blockDim.x;
     const int j = threadIdx.y + blockIdx.y * blockDim.y;
-
+    const int a_width = a_lu + a_lb + 1;
+    const int b_width = b_lu + b_lb + 1;
     if (i < n && j < b_lu + b_lb + 1) {
         const int o = i + (j - b_lu);
 
@@ -259,7 +260,7 @@ __global__ void banded_cuda_backbackward_kernel_B(
             const int k2 = (o - pos) + a_lu;
             if (k2 < 0 || k2 >= a_lu + a_lb +1) continue;
             if (pos < 0 || pos >= n) continue;
-            scalar_t a_val = a[batch][pos][k2]
+            scalar_t a_val = a[batch][pos][k2];
         // End over left side.
 
             scalar_t mx = maxes[batch][pos][k];
@@ -273,7 +274,7 @@ __global__ void banded_cuda_backbackward_kernel_B(
             for (int m = 0; m < self_width; ++m) {
                 const int pos_in = (i + (m - a_lu));
                 m2 = (pos_in - o) + b_lu;
-                if (m2 < 0 || m2 >= b_width) continue;
+                if (m2 < 0 || m2 >= a_width) continue;
                 if (pos_in < 0 || pos_in >= n) continue;
 
                 scalar_t a_inner_val = a[batch][pos][m];
