@@ -19,19 +19,17 @@ def test_logbmm(batch, row, inner, col):
 
     assert(torch.isclose(c, c2).all())
 
-    g = torch.autograd.grad(c, (a, b), torch.rand(batch, row, col).cuda(), create_graph=True)
-    g2 = torch.autograd.grad(c, (a, b), torch.rand(batch, row, col).cuda(), create_graph=True)
+    back = torch.rand(batch, row, col, requires_grad=True).cuda()
+    g = torch.autograd.grad(c, (a, b), back, create_graph=True)
+    g2 = torch.autograd.grad(c, (a, b), back, create_graph=True)
 
     for v1, v2 in zip(g, g2):
-        assert(torch.isclose(v1, v2).all())
+        assert (torch.isclose(v1, v2).all())
 
-    
-    h = torch.autograd.grad((g[0], g[1]), (a, b), (torch.rand(batch, row, inner).cuda(),
-                                                   torch.rand(batch, inner, col).cuda()))
-    h2 = torch.autograd.grad((g2[0], g2[0]) , (a, b), (torch.rand(batch, row, inner).cuda(),
-                                                       torch.rand(batch, inner, col).cuda()))
+    back2 = (torch.rand(batch, row, inner).cuda(),
+             torch.rand(batch, inner, col).cuda())
+    h = torch.autograd.grad((g[0], g[1]), (a, b, back), back2)
+    h2 = torch.autograd.grad((g2[0], g2[0]) , (a, b, back), back2)
 
     for v1, v2 in zip(h, h2):
-        assert(torch.isclose(v1, v2).all())
-
-    
+        assert (torch.isclose(v1, v2).all())
