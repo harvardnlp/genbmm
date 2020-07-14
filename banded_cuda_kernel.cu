@@ -53,7 +53,7 @@ __global__ void banded_cuda_forward_kernel_mul(
               scalar_t b_val = b[batch][o][k2];
               // done
 
-              scalar_t v = a_val + b_val
+              scalar_t v = a_val + b_val;
               if (v > m) {
                   m = v;
                   ind = k;
@@ -159,6 +159,7 @@ __global__ void banded_cuda_backbackward_kernel_A(
     const torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> part,
     const torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> maxes,
     const torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> grad_output,
+    const torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> grad_output_a,
     const int n,
     const int a_lu,
     const int a_lb,
@@ -229,6 +230,7 @@ __global__ void banded_cuda_backbackward_kernel_B(
     const torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> part,
     const torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> maxes,
     const torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> grad_output,
+    const torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> grad_output_a,
     const int n,
     const int a_lu,
     const int a_lb,
@@ -301,6 +303,7 @@ __global__ void banded_cuda_backbackward_kernel_C(
     const torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> part,
     const torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> maxes,
     const torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> grad_output,
+    const torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> grad_output_a,
     const int n,
     const int a_lu,
     const int a_lb,
@@ -480,6 +483,7 @@ std::vector<torch::Tensor> banded_cuda_backbackward(
            part.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
            maxes.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
            grad_output.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
+           grad_output_a.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
            a_size, a_lu, a_lb, b_lu, b_lb,
            out_lu, out_lb,
            mode);
@@ -505,6 +509,7 @@ std::vector<torch::Tensor> banded_cuda_backbackward(
            part.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
            maxes.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
            grad_output.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
+           grad_output_a.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
            a_size, a_lu, a_lb, b_lu, b_lb,
            out_lu, out_lb,
            mode);
@@ -528,6 +533,7 @@ std::vector<torch::Tensor> banded_cuda_backbackward(
            part.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
            maxes.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
            grad_output.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
+           grad_output_a.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
            a_size, a_lu, a_lb, b_lu, b_lb,
            out_lu, out_lb,
            mode
