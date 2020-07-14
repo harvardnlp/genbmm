@@ -463,7 +463,7 @@ std::vector<torch::Tensor> matmul_cuda_backbackward(
                     batch_size);
 
 
-  auto grad_grad = torch::zeros_like(b);
+  auto grad_grad = torch::zeros_like(grad_out);
   const int threads3 = 32;
   const dim3 blocks3(a_size / threads3 + 1,
                      b_size / threads3 + 1,
