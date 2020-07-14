@@ -8,6 +8,7 @@ if torch.cuda.is_available():
         CUDAExtension('_genbmm', [
             'matmul_cuda.cpp',
             'matmul_cuda_kernel.cu',
+            'banded_cuda_kernel.cu',
         ]),
     ]
 
