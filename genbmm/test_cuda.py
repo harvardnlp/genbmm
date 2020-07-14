@@ -44,9 +44,9 @@ def test_logbmm(batch, row, inner, col):
 
 from .sparse import banddiag, BandedMatrix
 def bmm(a, b):
-    return b.multiply(a.transpose())
+    return b.multiply_log(a.transpose())
 def bmm_simple(a, b):
-    return b.multiply_simple(a.transpose())
+    return b.multiply_log_simple(a.transpose())
 
 
 
