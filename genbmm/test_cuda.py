@@ -70,7 +70,7 @@ def test_sparse(batch, n, lu, ld):
     assert torch.isclose(a.cpu(), b).all()
 
     back = torch.rand(a.shape, requires_grad=True)
-    g = torch.autograd.grad(a, (start.cuda(), start2.cuda()), back.cuda(), create_graph=True)
+    g = torch.autograd.grad(a, (start, start2), back.cuda(), create_graph=True)
     g2 = torch.autograd.grad(b, (start, start2), back, create_graph=True)
 
     for v1, v2 in zip(g, g2):
@@ -80,6 +80,6 @@ def test_sparse(batch, n, lu, ld):
              torch.rand(g[1].shape))
 
     h2 = torch.autograd.grad((g2[0], g2[1]), (start, start2), (back2[0], back2[1]))
-    h = torch.autograd.grad((g[0], g[1]), (start.cuda(), start2.cuda()), (back2[0].cuda(), back2[1].cuda()))
+    h = torch.autograd.grad((g[0].cuda(), g[1].cuda()), (start.cuda(), start2.cuda()), (back2[0].cuda(), back2[1].cuda()))
     for i, (v1, v2) in enumerate(zip(h, h2)):
         assert torch.isclose(v1, v2, 1e-2).all(), "Round: " + str(i)
