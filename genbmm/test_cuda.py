@@ -34,7 +34,7 @@ def test_logbmm(batch, row, inner, col):
 
     c2 = logbmm(a, b)
     g2 = torch.autograd.grad(c, (a, b), back, create_graph=True)
-    h2 = torch.autograd.grad((g2[0], g2[0]), (a, b, back), back2)
+    h2 = torch.autograd.grad((g2[0], g2[1]), (a, b, back), back2)
 
     for i, (v1, v2) in enumerate(zip(h, h2)):
         assert (torch.isclose(v1, v2).all()), "Round: " + str(i)
