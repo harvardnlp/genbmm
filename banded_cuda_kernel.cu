@@ -18,12 +18,9 @@ __global__ void banded_cuda_forward_kernel_mul(
     torch::PackedTensorAccessor32<int,3,torch::RestrictPtrTraits> indices,
     torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> maxes,
     const int n,
-    const int a_lu,
-    const int a_lb,
-    const int b_lu,
-    const int b_lb,
-    const int result_lu,
-    const int result_lb,
+    const int a_lu, const int a_lb,
+    const int b_lu, const int b_lb,
+    const int result_lu, const int result_lb,
     const int mode
     ) {
 
@@ -31,6 +28,7 @@ __global__ void banded_cuda_forward_kernel_mul(
   const int i = threadIdx.x + blockIdx.x * blockDim.x;
   const int j = threadIdx.y + blockIdx.y * blockDim.y;
 
+  // Creat outer dim
   if (i < n && j < result_lu + result_lb + 1) {
       const int self_width = a_lu + a_lb + 1;
       const int b_width = b_lu + b_lb + 1;
@@ -39,17 +37,23 @@ __global__ void banded_cuda_forward_kernel_mul(
       int pos = 0;
       if (o < 0 || o >= n) return;
 
+
+
       if (mode == 1) {
           scalar_t val = 0.0;
           scalar_t m = -1e9;
           int ind = -1;
+          // Loop over inner dim
           for (int k = 0; k < self_width; ++k) {
               pos = (i + (k - a_lu));
               k2 = (pos - o) + b_lu;
               if (k2 < 0 || k2 >= b_width) continue;
               if (pos < 0 || pos >= n) continue;
+              scalar_t a_val = a[batch][i][k];
+              scalar_t b_val = b[batch][o][k2];
+              // done
 
-              scalar_t v = a[batch][i][k] + b[batch][o][k2];
+              scalar_t v = a_val + b_val
               if (v > m) {
                   m = v;
                   ind = k;
@@ -117,38 +121,28 @@ __global__ void banded_cuda_backward_kernel_mul(
   const int i = threadIdx.x + blockIdx.x * blockDim.x;
   const int j = threadIdx.y + blockIdx.y * blockDim.y;
 
+
   if (i < n && j < a_lu + a_lb + 1) {
       const int o = i + (j - a_lu);
       scalar_t val = 0.0;
       const int gradout_width = result_lu + result_lb + 1;
 
-      if (mode == 3) {
-          for (int k = 0; k < gradout_width; ++k) {
-              const int pos = i + (k - result_lu);
-              const int k2 = (o - pos) + b_lu;
-              if (k2 < 0 || k2 >= b_lu + b_lb +1) continue;
-              if (pos < 0 || pos >= n) continue;
-              val += b[batch][pos][k2] * grad_output[batch][i][k];
-          }
-      } else if (mode == 1) {
-          // Max
-          for (int k = 0; k < gradout_width; ++k) {
-              const int pos = i + (k - result_lu);
-              const int k2 = (o - pos) + b_lu;
-              if (k2 < 0 || k2 >= b_lu + b_lb +1) continue;
-              if (pos < 0 || pos >= n) continue;
+      // Loop over outer (b) dimesion
+      for (int k = 0; k < gradout_width; ++k) {
+          const int pos = i + (k - result_lu);
+          const int k2 = (o - pos) + b_lu;
+          if (k2 < 0 || k2 >= b_lu + b_lb +1) continue;
+          if (pos < 0 || pos >= n) continue;
+          // END
 
+          if (mode == 3) {
+              val += b[batch][pos][k2] * grad_output[batch][i][k];
+
+          } else if (mode == 1) {
               scalar_t v = (j == part[batch][i][k]) ? 1 : 0;
               val += v * grad_output[batch][i][k];
-          }
 
-      } else if (mode == 0) {
-          for (int k = 0; k < gradout_width; ++k) {
-              const int pos = i + (k - result_lu);
-              if (pos < 0 || pos >= n) continue;
-              const int k2 = (o - pos) + b_lu;
-              if (k2 < 0 || k2 >= b_lu + b_lb +1) continue;
-
+          } else if (mode == 0) {
               scalar_t v = a[batch][i][j] + b[batch][pos][k2] - part[batch][i][k];
               val += exp(v) * grad_output[batch][i][k];
           }
@@ -163,6 +157,7 @@ __global__ void banded_cuda_backbackward_kernel_A(
     const torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> a,
     const torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> b,
     const torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> part,
+    const torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> maxes,
     const torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> grad_output,
     const int n,
     const int a_lu,
@@ -172,51 +167,67 @@ __global__ void banded_cuda_backbackward_kernel_A(
     const int result_lu,
     const int result_lb) {
 
+    // Left sided.
     const int batch = blockIdx.z;
     const int i = threadIdx.x + blockIdx.x * blockDim.x;
     const int j = threadIdx.y + blockIdx.y * blockDim.y;
 
     if (i < n && j < a_lu + a_lb + 1) {
         const int o = i + (j - a_lu);
+
+        scalar_t a_val = a[batch][i][j];
+        // End Left sided.
+
         scalar_t val = 0.0;
+
+        // Loop over right side.
         const int gradout_width = result_lu + result_lb + 1;
+        for (int k = 0; k < gradout_width; ++k) {
+            const int pos = i + (k - result_lu);
+            const int k2 = (o - pos) + b_lu;
+            if (k2 < 0 || k2 >= b_lu + b_lb +1) continue;
+            if (pos < 0 || pos >= n) continue;
+            scalar_t b_val = b[batch][pos][k2]
+        // End over right side.
 
-        /* for (int k = 0; k < gradout_width; ++k) { */
-        /*     const int pos = i + (k - result_lu); */
-        /*     const int k2 = (o - pos) + b_lu; */
-        /*     if (k2 < 0 || k2 >= b_lu + b_lb +1) continue; */
-        /*     if (pos < 0 || pos >= n) continue; */
+            scalar_t m = maxes[batch][i][k];
+            scalar_t z = exp(part[batch][i][k] -m);
+            scalar_t s = exp(a_val + b_val - m) / z;
+            scalar_t inner = 0.0;
 
 
-        /*     scalar_t m = maxes[n][row][k]; */
-        /*     scalar_t z = exp(part[n][row][k] -m); */
-        /*     scalar_t s = exp(a[n][row][col] + b[n][col][k] - m) / z; */
-        /*     scalar_t inner = 0.0; */
-        /*     for (int k2 = 0; k2 < in_size; ++k2) { */
-        /*         scalar_t s2 = exp(a[n][row][k2] + b[n][k2][k] - m) / z; */
-        /*         scalar_t v; */
-        /*         if (col == k2) { */
-        /*             v = s  - s * s2; */
-        /*         } else { */
-        /*             v = - s * s2; */
-        /*         } */
-        /*         inner += v * grad_output_a[n][row][k2]; */
-        /*     } */
-        /*     val += inner * grad_output[n][row][k]; */
+            // Loop over inner dim
+            const int self_width = a_lu + a_lb + 1;
+            for (int m = 0; m < self_width; ++m) {
+                const int pos_in = (i + (m - a_lu));
+                m2 = (pos_in - o) + b_lu;
+                if (m2 < 0 || m2 >= b_width) continue;
+                if (pos_in < 0 || pos_in >= n) continue;
 
-        /*     val += b[batch][pos][k2] * grad_output[batch][i][k]; */
-
-        /* } */
+                scalar_t a_inner_val = a[batch][i][m];
+                scalar_t b_inner_val = b[batch][o][m2];
+                scalar_t s2 = exp(a_inner_val + b_inner_val - m) / z;
+                scalar_t v;
+                if (col == k2) {
+                    v = s  - s * s2;
+                } else {
+                    v = - s * s2;
+                }
+                inner += v * grad_output_a[batch][i][m];
+            }
+            val += inner * grad_output[batch][i][k];
+        }
         grad_a[batch][i][j] = val;
     }
 }
 
 template <typename scalar_t>
 __global__ void banded_cuda_backbackward_kernel_B(
-    torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> grad_a,
+    torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> grad_b,
     const torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> a,
     const torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> b,
     const torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> part,
+    const torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> maxes,
     const torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> grad_output,
     const int n,
     const int a_lu,
@@ -225,16 +236,70 @@ __global__ void banded_cuda_backbackward_kernel_B(
     const int b_lb,
     const int result_lu,
     const int result_lb) {
+
+    // Right sided.
+    const int batch = blockIdx.z;
+    const int i = threadIdx.x + blockIdx.x * blockDim.x;
+    const int j = threadIdx.y + blockIdx.y * blockDim.y;
+
+    if (i < n && j < b_lu + b_lb + 1) {
+        const int o = i + (j - b_lu);
+
+        scalar_t b_val = b[batch][i][j];
+        // End Right sided.
+
+        scalar_t val = 0.0;
+
+        // Loop over left side (not done).
+        const int gradout_width = result_lu + result_lb + 1;
+        for (int k = 0; k < gradout_width; ++k) {
+            const int pos = i + (k - result_lu);
+            const int k2 = (o - pos) + a_lu;
+            if (k2 < 0 || k2 >= a_lu + a_lb +1) continue;
+            if (pos < 0 || pos >= n) continue;
+            scalar_t a_val = a[batch][pos][k2]
+        // End over left side.
+
+            scalar_t m = maxes[batch][pos][k];
+            scalar_t z = exp(part[batch][pos][k] -m);
+            scalar_t s = exp(a_val + b_val - m) / z;
+            scalar_t inner = 0.0;
+
+
+            // Loop over inner dim
+            const int self_width = a_lu + a_lb + 1;
+            for (int m = 0; m < self_width; ++m) {
+                const int pos_in = (i + (m - a_lu));
+                m2 = (pos_in - o) + b_lu;
+                if (m2 < 0 || m2 >= b_width) continue;
+                if (pos_in < 0 || pos_in >= n) continue;
+
+                scalar_t a_inner_val = a[batch][pos][m];
+                scalar_t b_inner_val = b[batch][i][m2];
+                scalar_t s2 = exp(a_inner_val + b_inner_val - m) / z;
+                scalar_t v;
+                if (col == k2) {
+                    v = s  - s * s2;
+                } else {
+                    v = - s * s2;
+                }
+                inner += v * grad_output_a[batch][pos][m];
+            }
+            val += inner * grad_output[batch][i][k];
+        }
+        grad_b[batch][i][j] = val;
+    }
 
 }
 
 
 template <typename scalar_t>
 __global__ void banded_cuda_backbackward_kernel_C(
-    torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> grad_a,
+    torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> grad_grad,
     const torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> a,
     const torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> b,
     const torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> part,
+    const torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> maxes,
     const torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> grad_output,
     const int n,
     const int a_lu,
@@ -244,36 +309,37 @@ __global__ void banded_cuda_backbackward_kernel_C(
     const int result_lu,
     const int result_lb) {
 
+    // Full size
     const int batch = blockIdx.z;
     const int i = threadIdx.x + blockIdx.x * blockDim.x;
     const int j = threadIdx.y + blockIdx.y * blockDim.y;
 
-    // if (i < n && j < result_lu + result_lb + 1) {
-    //     const int self_width = a_lu + a_lb + 1;
-    //     const int b_width = b_lu + b_lb + 1;
-    //     const int o =  i + (j - result_lu);
-    //     int k2 = 0;
-    //     int pos = 0;
-    //     if (o < 0 || o >= n) return;
-    //     scalar_t val = 0.0;
+    if (i < n && j < result_lu + result_lb + 1) {
+        const int self_width = a_lu + a_lb + 1;
+        const int b_width = b_lu + b_lb + 1;
+        const int o =  i + (j - result_lu);
+        int k2 = 0;
+        int pos = 0;
+        if (o < 0 || o >= n) return;
+        scalar_t val = 0.0;
 
 
-    //     for (int k = 0; k < self_width; ++k) {
-    //         pos = (i + (k - a_lu));
-    //         k2 = (pos - o) + b_lu;
-    //         if (k2 < 0 || k2 >= b_width) continue;
-    //         if (pos < 0 || pos >= n) continue;
+        // Loop over inner dim
+        for (int k = 0; k < self_width; ++k) {
+            pos = (i + (k - a_lu));
+            k2 = (pos - o) + b_lu;
+            if (k2 < 0 || k2 >= b_width) continue;
+            if (pos < 0 || pos >= n) continue;
+            scalar_t a_val = a[batch][i][k];
+            scalar_t b_val = b[batch][o][k2];
+            // done
 
-    //         scalar_t m = maxes[batch][i][k];
-    //         val += (exp(a[batch][i][k] + b[batch][o][k2] - m) / (exp(part[batch][i][j] -m)))
-    //                 * grad_output[batch][i][k];
-
-    //         //val = a[batch][i][k] + b[batch][o][k2];
-    //     }
-    //     out[batch][i][j] = val;
-    // }
+            scalar_t m_val = maxes[batch][i][j];
+            val += (exp(a_val + b_val - m) / (exp(part[batch][i][j] -m))) * grad_output[batch][i][k];
+        }
+        grad_grad[batch][i][j] = val;
+    }
 }
-
 }
 
 // BANDED FORWARD
@@ -372,5 +438,103 @@ std::vector<torch::Tensor> banded_cuda_backward(
                                                                               );
             }));
     return {grad_a};
+
+}
+
+
+std::vector<torch::Tensor> banded_cuda_backbackward(
+        torch::Tensor a,
+        int a_lu,
+        int a_lb,
+        torch::Tensor b,
+        int b_lu,
+        int b_lb,
+        torch::Tensor grad_output,
+        torch::Tensor part,
+        torch::Tensor maxes,
+        torch::Tensor grad_out_a,
+        int mode) {
+
+    const int batch_size = a.size(0);
+    const int out_lu = a_lu + b_lb;
+    const int out_lb = a_lb + b_lu;
+
+    const int a_size = a.size(1);
+    const int new_size = out_lu + out_lb + 1;
+
+    auto grad_a = torch::zeros_like(a);
+    {
+    const int in_size = a.size(2);
+    const int threads = 32;
+    const dim3 blocks(a_size / threads + 1,
+                      in_size / threads + 1,
+                      batch_size);
+    const dim3 threads_per_block(threads, threads, 1);
+
+
+    AT_DISPATCH_FLOATING_TYPES(a.type(), "matmul_forward_cuda", ([&] {
+       banded_cuda_backbackward_kernel_A<scalar_t><<<blocks, threads_per_block>>>(
+           grad_a.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
+           a.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
+           b.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
+           part.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
+           maxes.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
+           grad_output.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
+           a_size, a_lu, a_lb, b_lu, b_lb,
+           out_lu, out_lb,
+           mode);
+            }));
+    }
+
+    auto grad_b = torch::zeros_like(b);
+    {
+    const int in_size = b.size(2);
+    const int threads = 32;
+    const dim3 blocks(b_size / threads + 1,
+                      in_size / threads + 1,
+                      batch_size);
+    const dim3 threads_per_block(threads, threads, 1);
+
+
+
+    AT_DISPATCH_FLOATING_TYPES(a.type(), "matmul_forward_cuda", ([&] {
+       banded_cuda_backbackward_kernel_B<scalar_t><<<blocks, threads_per_block>>>(
+           grad_b.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
+           a.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
+           b.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
+           part.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
+           maxes.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
+           grad_output.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
+           a_size, a_lu, a_lb, b_lu, b_lb,
+           out_lu, out_lb,
+           mode);
+            }));
+    }
+
+    auto grad_grad = torch::zeros_like(grad_out);
+    {
+    const int threads = 32;
+    const dim3 blocks(a_size / threads + 1,
+                      new_size / threads + 1,
+                      batch_size);
+    const dim3 threads_per_block(threads, threads, 1);
+
+
+    AT_DISPATCH_FLOATING_TYPES(a.type(), "matmul_forward_cuda", ([&] {
+       banded_cuda_backbackward_kernel_C<scalar_t><<<blocks, threads_per_block>>>(
+           grad_grad.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
+           a.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
+           b.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
+           part.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
+           maxes.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
+           grad_output.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
+           a_size, a_lu, a_lb, b_lu, b_lb,
+           out_lu, out_lb,
+           mode
+
+                                                                              );
+            }));
+    }
+    return {grad_a, grad_b, grad_grad};
 
 }
