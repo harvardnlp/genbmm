@@ -40,3 +40,26 @@ def test_logbmm(batch, row, inner, col):
 
     for i, (v1, v2) in enumerate(zip(h, h2)):
         assert torch.isclose(v1, v2, 1e-2).all(), "Round: " + str(i)
+
+
+from .sparse import banddiag, BandedMatrix
+def bmm(a, b):
+    return b.multiply(a.transpose())
+def bmm_simple(a, b):
+    return b.multiply_simple(a.transpose())
+
+
+
+@given(sint, mint, lint, lint)
+def test_sparse(batch, n, lu, ld):
+    start = torch.rand(batch, n, n)
+    band, _ = banddiag(start, lu, ld)
+    banded_x = BandedMatrix(band, lu, ld)
+    x = banded_x.to_dense()
+
+    start = torch.rand(batch, n, n)
+    band, _ = banddiag(start, lu, ld)
+    banded_y = BandedMatrix(band, lu, ld)
+    y = banded_y.to_dense()
+
+    assert torch.isclose(bmm(x, y).data, bmm_simple(x, y).data)
