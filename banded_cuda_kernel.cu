@@ -516,7 +516,7 @@ std::vector<torch::Tensor> banded_cuda_backbackward(
     /*        a_size, a_lu, a_lb, b_lu, b_lb, */
     /*        out_lu, out_lb); */
     /*         })); */
-    /* } */
+    }
 
     auto grad_grad = torch::zeros_like(grad_output);
     {
