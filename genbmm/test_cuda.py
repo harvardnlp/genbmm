@@ -64,5 +64,5 @@ def test_sparse(batch, n, lu, ld):
     banded_y_cuda = BandedMatrix(band.cuda(), lu, ld)
     y = banded_y.to_dense()
 
-    assert torch.isclose(bmm(banded_x.cuda(), banded_y_cuda).data.cpu(),
+    assert torch.isclose(bmm(banded_x_cuda, banded_y_cuda).data.cpu(),
                          bmm_simple(banded_x, banded_y).data)
