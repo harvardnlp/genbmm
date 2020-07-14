@@ -65,4 +65,4 @@ def test_sparse(batch, n, lu, ld):
     y = banded_y.to_dense()
 
     assert torch.isclose(bmm(banded_x_cuda, banded_y_cuda).data.cpu(),
-                         bmm_simple(banded_x, banded_y).data)
+                         bmm_simple(banded_x, banded_y).data).all()
