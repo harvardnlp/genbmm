@@ -338,8 +338,8 @@ __global__ void banded_cuda_backbackward_kernel_C(
             scalar_t b_val = b[batch][o][k2];
             // done
 
-            scalar_t m_val = maxes[batch][i][j];
-            val += (exp(a_val + b_val - m) / (exp(part[batch][i][j] -m))) * grad_output[batch][i][k];
+            scalar_t mx = maxes[batch][i][j];
+            val += (exp(a_val + b_val - mx) / (exp(part[batch][i][j] - mx))) * grad_output[batch][i][k];
         }
         grad_grad[batch][i][j] = val;
     }
