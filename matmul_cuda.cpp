@@ -168,5 +168,5 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   m.def("backbackward", &matmul_backbackward, "Log-Matmul backbackward (CUDA)");
   m.def("forward_band", &banded_forward, "Banded Log-Matmul forward (CUDA)");
   m.def("backward_band", &banded_backward, "Banded Log-Matmul backward (CUDA)");
-  m.def("backbackward_band", &banded_backward, "Banded Log-Matmul backbackward (CUDA)");
+  m.def("backbackward_band", &banded_backbackward, "Banded Log-Matmul backbackward (CUDA)");
 }
