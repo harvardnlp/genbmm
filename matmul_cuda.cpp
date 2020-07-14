@@ -142,6 +142,25 @@ std::vector<torch::Tensor> banded_backward(
                               grad_output, part, mode);
 }
 
+std::vector<torch::Tensor> banded_backbackward(
+        torch::Tensor a,
+        int a_lu,
+        int a_lb,
+        torch::Tensor b,
+        int b_lu,
+        int b_lb,
+        torch::Tensor grad_output,
+        torch::Tensor part,
+        torch::Tensor maxes,
+        torch::Tensor grad_out_a,
+        int mode) {
+
+ return banded_cuda_backbackward(a, a_lu, a_lb,
+                                 b, b_lu, b_lb,
+                                 grad_output, part, maxes, grad_out_a, mode);
+}
+
+
 
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   m.def("forward", &matmul_forward, "Log-Matmul forward (CUDA)");
@@ -149,4 +168,5 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   m.def("backbackward", &matmul_backbackward, "Log-Matmul backbackward (CUDA)");
   m.def("forward_band", &banded_forward, "Banded Log-Matmul forward (CUDA)");
   m.def("backward_band", &banded_backward, "Banded Log-Matmul backward (CUDA)");
+  m.def("backbackward_band", &banded_backward, "Banded Log-Matmul backbackward (CUDA)");
 }

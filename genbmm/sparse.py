@@ -472,7 +472,7 @@ class BandedLogMulBack(torch.autograd.Function):
 
     @staticmethod
     def backward(ctx, grad_output):
-        a, b, grad_out, part, maxes, band = ctx.saved_tensors
+        a, b, grad_out, part, maxes, bands = ctx.saved_tensors
         a_lu, a_ld, b_lu, b_ld, o_lu, o_ld = bands.tolist()
         a = BandedMatrix(a, a_lu, a_ld, -1e9)
         b = BandedMatrix(b, b_lu, b_ld, -1e9)
