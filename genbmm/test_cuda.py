@@ -9,7 +9,7 @@ lint = integers(min_value=0, max_value=10)
 sint = integers(min_value=3, max_value=5)
 
 tmp = torch.rand(10).cuda()
-@given(sint, sint, sint, sint)
+@given(sint, mint, mint, mint)
 def test_logbmm(batch, row, inner, col):
     a = torch.rand(batch, row, inner, requires_grad=True).cuda()
     b = torch.rand(batch, inner, col, requires_grad=True).cuda()
