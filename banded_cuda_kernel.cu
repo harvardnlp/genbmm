@@ -455,7 +455,7 @@ std::vector<torch::Tensor> banded_cuda_backbackward(
         torch::Tensor grad_output,
         torch::Tensor part,
         torch::Tensor maxes,
-        torch::Tensor grad_out_a,
+        torch::Tensor grad_output_a,
         int mode) {
 
     const int batch_size = a.size(0);
