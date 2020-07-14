@@ -256,10 +256,14 @@ __global__ void banded_cuda_backbackward_kernel_B(
         // Loop over left side (not done).
         const int gradout_width = result_lu + result_lb + 1;
         for (int k = 0; k < gradout_width; ++k) {
+
+            // fix these
             const int pos = i + (k - result_lu);
             const int k2 = (o - pos) + a_lu;
             if (k2 < 0 || k2 >= a_lu + a_lb +1) continue;
             if (pos < 0 || pos >= n) continue;
+            //
+
             scalar_t a_val = a[batch][pos][k2];
         // End over left side.
 
@@ -277,8 +281,8 @@ __global__ void banded_cuda_backbackward_kernel_B(
                 if (m2 < 0 || m2 >= a_width) continue;
                 if (pos_in < 0 || pos_in >= n) continue;
 
-                scalar_t a_inner_val = a[batch][pos][m];
-                scalar_t b_inner_val = b[batch][i][m2];
+                scalar_t a_inner_val = a[batch][pos][m2];
+                scalar_t b_inner_val = b[batch][i][m];
                 scalar_t s2 = exp(a_inner_val + b_inner_val - mx) / z;
                 scalar_t v;
                 if (j == m2) {
@@ -286,9 +290,9 @@ __global__ void banded_cuda_backbackward_kernel_B(
                 } else {
                     v = - s * s2;
                 }
-                inner += v * grad_output_a[batch][pos][m];
+                inner += v * grad_output_a[batch][pos][m2];
             }
-            val += inner * grad_output[batch][i][k];
+            val += inner * grad_output[batch][pos][k];
         }
         grad_b[batch][i][j] = val;
     }

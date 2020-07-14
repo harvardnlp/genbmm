@@ -50,7 +50,7 @@ def bmm_simple(a, b):
 
 
 
-@given(sint, mint, lint, lint)
+@given(sint, mint, mint, mint)
 def test_sparse(batch, n, lu, ld):
     start = torch.rand(batch, n, n, requires_grad=True)
     band, _ = banddiag(start, lu, ld)
