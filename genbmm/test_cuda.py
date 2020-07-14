@@ -26,8 +26,10 @@ def test_logbmm(batch, row, inner, col):
     for v1, v2 in zip(g, g2):
         assert (torch.isclose(v1, v2).all())
 
+
     back2 = (torch.rand(batch, row, inner).cuda(),
              torch.rand(batch, inner, col).cuda())
+
     c = (a[:, :, :, None] + b[:, None, :, :]).logsumexp(-2)
     g = torch.autograd.grad(c, (a, b), back, create_graph=True)
     h = torch.autograd.grad((g[0], g[1]), (a, b, back), back2)
@@ -37,4 +39,4 @@ def test_logbmm(batch, row, inner, col):
     h2 = torch.autograd.grad((g2[0], g2[1]), (a, b, back), back2)
 
     for i, (v1, v2) in enumerate(zip(h, h2)):
-        assert torch.isclose(v1, v2, 1e-3).all(), "Round: " + str(i)
+        assert torch.isclose(v1, v2, 1e-2).all(), "Round: " + str(i)
