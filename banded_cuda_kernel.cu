@@ -201,7 +201,7 @@ __global__ void banded_cuda_backbackward_kernel_A(
             const int self_width = a_lu + a_lb + 1;
             for (int m = 0; m < self_width; ++m) {
                 const int pos_in = (i + (m - a_lu));
-                m2 = (pos_in - o) + b_lu;
+                int m2 = (pos_in - o) + b_lu;
                 if (m2 < 0 || m2 >= b_width) continue;
                 if (pos_in < 0 || pos_in >= n) continue;
 
@@ -209,7 +209,7 @@ __global__ void banded_cuda_backbackward_kernel_A(
                 scalar_t b_inner_val = b[batch][o][m2];
                 scalar_t s2 = exp(a_inner_val + b_inner_val - mx) / z;
                 scalar_t v;
-                if (col == k2) {
+                if (j == m2) {
                     v = s  - s * s2;
                 } else {
                     v = - s * s2;
@@ -273,7 +273,7 @@ __global__ void banded_cuda_backbackward_kernel_B(
             const int self_width = a_lu + a_lb + 1;
             for (int m = 0; m < self_width; ++m) {
                 const int pos_in = (i + (m - a_lu));
-                m2 = (pos_in - o) + b_lu;
+                int m2 = (pos_in - o) + b_lu;
                 if (m2 < 0 || m2 >= a_width) continue;
                 if (pos_in < 0 || pos_in >= n) continue;
 
@@ -281,7 +281,7 @@ __global__ void banded_cuda_backbackward_kernel_B(
                 scalar_t b_inner_val = b[batch][i][m2];
                 scalar_t s2 = exp(a_inner_val + b_inner_val - mx) / z;
                 scalar_t v;
-                if (col == k2) {
+                if (j == m2) {
                     v = s  - s * s2;
                 } else {
                     v = - s * s2;
