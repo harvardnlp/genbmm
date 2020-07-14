@@ -28,8 +28,8 @@ def test_logbmm(batch, row, inner, col):
 
     back2 = (torch.rand(batch, row, inner).cuda(),
              torch.rand(batch, inner, col).cuda())
-    h = torch.autograd.grad((g[0], g[1]), (a, b, back), back2)
-    h2 = torch.autograd.grad((g2[0], g2[0]) , (a, b, back), back2)
+    h = torch.autograd.grad((g[0], g[1]), (a, b, back), back2, retain_graph=True)
+    h2 = torch.autograd.grad((g2[0], g2[0]), (a, b, back), back2)
 
     for v1, v2 in zip(h, h2):
         assert (torch.isclose(v1, v2).all())
