@@ -486,8 +486,7 @@ std::vector<torch::Tensor> banded_cuda_backbackward(
            grad_output.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
            grad_output_a.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
            a_size, a_lu, a_lb, b_lu, b_lb,
-           out_lu, out_lb,
-           mode);
+           out_lu, out_lb);
             }));
     }
 
@@ -512,12 +511,11 @@ std::vector<torch::Tensor> banded_cuda_backbackward(
            grad_output.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
            grad_output_a.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
            a_size, a_lu, a_lb, b_lu, b_lb,
-           out_lu, out_lb,
-           mode);
+           out_lu, out_lb);
             }));
     }
 
-    auto grad_grad = torch::zeros_like(grad_out);
+    auto grad_grad = torch::zeros_like(grad_output);
     {
     const int threads = 32;
     const dim3 blocks(a_size / threads + 1,
@@ -536,8 +534,7 @@ std::vector<torch::Tensor> banded_cuda_backbackward(
            grad_output.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
            grad_output_a.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
            a_size, a_lu, a_lb, b_lu, b_lb,
-           out_lu, out_lb,
-           mode
+           out_lu, out_lb
 
                                                                               );
             }));

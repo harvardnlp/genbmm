@@ -45,6 +45,19 @@ std::vector<torch::Tensor> banded_cuda_backward(
         torch::Tensor part,
         int mode);
 
+std::vector<torch::Tensor> banded_cuda_backbackward(
+        torch::Tensor a,
+        int a_lu,
+        int a_lb,
+        torch::Tensor b,
+        int b_lu,
+        int b_lb,
+        torch::Tensor grad_output,
+        torch::Tensor part,
+        torch::Tensor maxes,
+        torch::Tensor grad_out_a,
+        int mode);
+
 
 // C++ interface
 
