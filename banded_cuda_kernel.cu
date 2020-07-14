@@ -472,7 +472,7 @@ std::vector<torch::Tensor> banded_cuda_backbackward(
     auto grad_a = torch::zeros_like(a);
     {
     const int in_size = a.size(2);
-    const int threads = 32;
+    const int threads = 16;
     const dim3 blocks(a_size / threads + 1,
                       in_size / threads + 1,
                       batch_size);
@@ -496,7 +496,7 @@ std::vector<torch::Tensor> banded_cuda_backbackward(
     auto grad_b = torch::zeros_like(b);
     {
     const int in_size = b.size(2);
-    const int threads = 32;
+    const int threads = 16;
     const dim3 blocks(b_size / threads + 1,
                       in_size / threads + 1,
                       batch_size);
@@ -504,23 +504,23 @@ std::vector<torch::Tensor> banded_cuda_backbackward(
 
 
 
-    AT_DISPATCH_FLOATING_TYPES(a.type(), "matmul_forward_cuda", ([&] {
-       banded_cuda_backbackward_kernel_B<scalar_t><<<blocks, threads_per_block>>>(
-           grad_b.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
-           a.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
-           b.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
-           part.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
-           maxes.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
-           grad_output.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
-           grad_output_a.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
-           a_size, a_lu, a_lb, b_lu, b_lb,
-           out_lu, out_lb);
-            }));
-    }
+    /* AT_DISPATCH_FLOATING_TYPES(a.type(), "matmul_forward_cuda", ([&] { */
+    /*    banded_cuda_backbackward_kernel_B<scalar_t><<<blocks, threads_per_block>>>( */
+    /*        grad_b.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(), */
+    /*        a.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(), */
+    /*        b.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(), */
+    /*        part.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(), */
+    /*        maxes.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(), */
+    /*        grad_output.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(), */
+    /*        grad_output_a.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(), */
+    /*        a_size, a_lu, a_lb, b_lu, b_lb, */
+    /*        out_lu, out_lb); */
+    /*         })); */
+    /* } */
 
     auto grad_grad = torch::zeros_like(grad_output);
     {
-    const int threads = 32;
+    const int threads = 16;
     const dim3 blocks(a_size / threads + 1,
                       new_size / threads + 1,
                       batch_size);
