@@ -463,6 +463,7 @@ std::vector<torch::Tensor> banded_cuda_backbackward(
     const int out_lb = a_lb + b_lu;
 
     const int a_size = a.size(1);
+    const int b_size = b.size(1);
     const int new_size = out_lu + out_lb + 1;
 
     auto grad_a = torch::zeros_like(a);
