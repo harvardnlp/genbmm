@@ -1,4 +1,4 @@
-gimport torch
+import torch
 
 has_cuda = False
 try:
