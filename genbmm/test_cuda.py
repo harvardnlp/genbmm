@@ -80,10 +80,19 @@ def bmm_simple(a, b):
 
 @given(sint, mint, mint, mint)
 def test_sparse(batch, n, lu, ld):
-    start = torch.rand(batch, n, lu + ld +1, requires_grad=True)
+    tmp = torch.rand(batch, n, n)
+    band, _ = banddiag(tmp, lu, ld)
+    tmp2 = torch.rand(batch, n, n)
+    band2, _ = banddiag(tmp2, lu, ld)
+
+
+    start = band.data.clone()
+    start.requires_grad_(True)
     banded_x = BandedMatrix(start, lu, ld)
     banded_x_cuda = BandedMatrix(start.cuda(), lu, ld)
 
+    start = band2.data.clone()
+    start.requires_grad_(True)
     start2 = torch.rand(batch, n, lu + ld +1, requires_grad=True)
     banded_y = BandedMatrix(start2, lu, ld)
     banded_y_cuda = BandedMatrix(start2.cuda(), lu, ld)
