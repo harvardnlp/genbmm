@@ -50,47 +50,43 @@ def bmm_simple(a, b):
 
 
 
-@given(sint, mint, mint, mint)
-def test_sparse_nonzero(batch, n, lu, ld):
-    start = torch.rand(batch, n, n).cuda()
-    band, _ = banddiag(start, lu, ld)
-    band.requires_grad_(True)
+# @given(sint, mint, mint, mint)
+# def test_sparse_nonzero(batch, n, lu, ld):
+#     start = torch.rand(batch, lu, n).cuda()
+#     band, _ = banddiag(start, lu, ld)
+#     band.requires_grad_(True)
 
-    start2 = torch.rand(batch, n, n).cuda()
-    band2, _ = banddiag(start2, lu, ld)
-    band2.requires_grad_(True)
+#     start2 = torch.rand(batch, n, n).cuda()
+#     band2, _ = banddiag(start2, lu, ld)
+#     band2.requires_grad_(True)
 
 
-    a = BandedLogMul.apply(band, lu, ld, band2, lu, ld, lu+ld, ld+lu)
+#     a = BandedLogMul.apply(band, lu, ld, band2, lu, ld, lu+ld, ld+lu)
 
-    back = torch.rand(a.shape, requires_grad=True).cuda()
-    g = torch.autograd.grad(a, (band), back, create_graph=True)
+#     back = torch.rand(a.shape, requires_grad=True).cuda()
+#     g = torch.autograd.grad(a, (band), back, create_graph=True)
 
-    # back2 = (torch.rand(g[0].shape).cuda(),
-    #          torch.rand(g[1].shape).cuda())
-    back2 = (torch.rand(g[0].shape).cuda())
-             # torch.rand(g[1].shape).cuda())
+#     # back2 = (torch.rand(g[0].shape).cuda(),
+#     #          torch.rand(g[1].shape).cuda())
+#     back2 = (torch.rand(g[0].shape).cuda())
+#              # torch.rand(g[1].shape).cuda())
 
-    h = torch.autograd.grad(g[0], band,
-                            back2)
-    print(h[0])
-    print(h[1])
-    print(h[2])
-    assert(False)
+#     h = torch.autograd.grad(g[0], band,
+#                             back2)
+#     print(h[0])
+#     print(h[1])
+#     print(h[2])
+#     assert(False)
 
 @given(sint, mint, mint, mint)
 def test_sparse(batch, n, lu, ld):
-    start = torch.rand(batch, n, n, requires_grad=True)
-    band, _ = banddiag(start, lu, ld)
-    banded_x = BandedMatrix(band, lu, ld)
-    banded_x_cuda = BandedMatrix(band.cuda(), lu, ld)
-    x = banded_x.to_dense()
+    start = torch.rand(batch, n, lu + ld +1, requires_grad=True)
+    banded_x = BandedMatrix(start, lu, ld)
+    banded_x_cuda = BandedMatrix(start.cuda(), lu, ld)
 
-    start2 = torch.rand(batch, n, n, requires_grad=True)
-    band, _ = banddiag(start2, lu, ld)
-    banded_y = BandedMatrix(band, lu, ld)
-    banded_y_cuda = BandedMatrix(band.cuda(), lu, ld)
-    y = banded_y.to_dense()
+    start2 = torch.rand(batch, n, lu + ld +1, requires_grad=True)
+    banded_y = BandedMatrix(start2, lu, ld)
+    banded_y_cuda = BandedMatrix(start2.cuda(), lu, ld)
 
 
     a = bmm(banded_x_cuda, banded_y_cuda).data
