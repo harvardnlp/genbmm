@@ -106,8 +106,6 @@ def test_sparse(batch, n, lu, ld):
     g2 = torch.autograd.grad(b, (start, start2), back, create_graph=True)
 
     for v1, v2 in zip(g, g2):
-        print(v1)
-        print(v2)
         assert torch.isclose(v1.cpu(), v2).all()
 
     back2 = (torch.rand(g[0].shape),
