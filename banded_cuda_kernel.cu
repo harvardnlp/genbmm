@@ -263,7 +263,7 @@ __global__ void banded_cuda_backbackward_kernel_B(
             if (j < 0 || j >= a_lu + a_lb +1) continue;
             if (i < 0 || i >= n) continue;
             //
-
+            const int o =  i + (j - result_lu);
             scalar_t a_val = a[batch][i][j];
         // End over left side.
 
