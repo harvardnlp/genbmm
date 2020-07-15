@@ -49,13 +49,13 @@ def repdiag(x, lu, ld):
 class Transpose(torch.autograd.Function):
     @staticmethod
     def forward(ctx, val, lu, ld):
-        ctx.save_for_backward(torch.tensor([lu, ld]))
+        ctx.save_for_backward(val, torch.tensor([lu, ld]))
         return repdiag(val.flip(-1), lu, ld)
 
     @staticmethod
     def backward(ctx, grad_output):
-        val, = ctx.saved_tensors
-        lu, ld = val.tolist()
+        val, band = ctx.saved_tensors
+        lu, ld = band.tolist()
         return Transpose.apply(grad_output, ld, lu), None, None
 
 
