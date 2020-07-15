@@ -172,9 +172,9 @@ __global__ void banded_cuda_backbackward_kernel_A(
     const int batch = blockIdx.z;
     const int i = threadIdx.x + blockIdx.x * blockDim.x;
     const int j = threadIdx.y + blockIdx.y * blockDim.y;
+    const int o = i + (j - a_lu);
 
-    if (i < n && j < a_lu + a_lb + 1) {
-        const int o = i + (j - a_lu);
+    if (i < n && j < a_lu + a_lb + 1 && o >= 0 && o < n) {
         const int b_width = b_lu + b_lb + 1;
         scalar_t a_val = a[batch][i][j];
         // End Left sided.
@@ -319,11 +319,12 @@ __global__ void banded_cuda_backbackward_kernel_C(
     const int batch = blockIdx.z;
     const int i = threadIdx.x + blockIdx.x * blockDim.x;
     const int j = threadIdx.y + blockIdx.y * blockDim.y;
+    const int o =  i + (j - result_lu);
 
-    if (i < n && j < result_lu + result_lb + 1) {
+    if (i < n && j < result_lu + result_lb + 1 && o >= 0 && o < n) {
         const int self_width = a_lu + a_lb + 1;
         const int b_width = b_lu + b_lb + 1;
-        const int o =  i + (j - result_lu);
+
         int k2 = 0;
         int pos = 0;
         if (o < 0 || o >= n) return;
