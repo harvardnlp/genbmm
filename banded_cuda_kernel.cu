@@ -502,8 +502,7 @@ std::vector<torch::Tensor> banded_cuda_backbackward(
     const dim3 threads_per_block(threads, threads, 1);
 
 
-
-    AT_DISPATCH_FLOATING_TYPES(a.type(), "matmul_forward_cuda", ([&] {
+    AT_DISPATCH_FLOATING_TYPES(b.type(), "matmul_forward_cuda", ([&] {
        banded_cuda_backbackward_kernel_B<scalar_t><<<blocks, threads_per_block>>>(
            grad_b.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
            a.packed_accessor32<scalar_t,3,torch::RestrictPtrTraits>(),
@@ -524,7 +523,6 @@ std::vector<torch::Tensor> banded_cuda_backbackward(
                       new_size / threads + 1,
                       batch_size);
     const dim3 threads_per_block(threads, threads, 1);
-
 
     AT_DISPATCH_FLOATING_TYPES(a.type(), "matmul_forward_cuda", ([&] {
        banded_cuda_backbackward_kernel_C<scalar_t><<<blocks, threads_per_block>>>(
