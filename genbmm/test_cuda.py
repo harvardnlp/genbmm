@@ -108,12 +108,19 @@ def test_sparse(batch, n, lu, ld):
     for v1, v2 in zip(g, g2):
         assert torch.isclose(v1.cpu(), v2).all()
 
+
+
     back2 = (torch.rand(g[0].shape),
              torch.rand(g[1].shape))
 
+
+
+    b = bmm_simple(banded_x, banded_y).data
+    g2 = torch.autograd.grad(b, (start, start2), back, create_graph=True)
     h2 = torch.autograd.grad((g2[0], g2[1]), (back, start, start2), (back2[0], back2[1]))
 
-    print("here")
+    a = bmm(banded_x_cuda, banded_y_cuda).data
+    g = torch.autograd.grad(a, (start, start2), back.cuda(), create_graph=True)
     h = torch.autograd.grad((g[0].cuda(), g[1].cuda()), (back, start, start2),
                             (back2[0].cuda(), back2[1].cuda()))
     for i, (v1, v2) in enumerate(zip(h, h2)):
