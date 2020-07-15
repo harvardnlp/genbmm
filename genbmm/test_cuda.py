@@ -121,7 +121,7 @@ def test_sparse(batch, n, lu, ld):
 
 
     back = back.data.clone()
-    back.require_grad_(True)
+    back.requires_grad_(True)
     start = band.data.clone().cuda()
     start.requires_grad_(True)
     banded_x_cuda = BandedMatrix(start, lu, ld)
