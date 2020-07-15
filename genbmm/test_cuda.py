@@ -114,7 +114,7 @@ def test_sparse(batch, n, lu, ld):
              torch.rand(g[1].shape))
 
 
-
+    back = torch.rand(a.shape, requires_grad=True)
     b = bmm_simple(banded_x, banded_y).data
     g2 = torch.autograd.grad(b, (start, start2), back, create_graph=True)
     h2 = torch.autograd.grad((g2[0], g2[1]), (start, start2, back), (back2[0], back2[1]))
