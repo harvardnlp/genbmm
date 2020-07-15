@@ -55,15 +55,13 @@ def test_sparse_nonzero(batch, n, lu, ld):
     start = torch.rand(batch, n, n).cuda()
     band, _ = banddiag(start, lu, ld)
     band.requires_grad_(True)
-    banded_x_cuda = BandedMatrix(band, lu, ld)
 
     start2 = torch.rand(batch, n, n).cuda()
     band2, _ = banddiag(start2, lu, ld)
     band2.requires_grad_(True)
-    banded_y_cuda = BandedMatrix(band2, lu, ld)
 
 
-    a = bmm(banded_x_cuda, banded_y_cuda).data
+    a = BandedLogMul.apply(band, lu, ld, band2, lu, ld, lu+lu+1, ld+ld+1)
 
     back = torch.rand(a.shape, requires_grad=True).cuda()
     g = torch.autograd.grad(a, (band, band2), back, create_graph=True)
