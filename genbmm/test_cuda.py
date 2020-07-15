@@ -120,14 +120,13 @@ def test_sparse(batch, n, lu, ld):
     h2 = torch.autograd.grad((g2[0], g2[1]), (back, start, start2), (back2[0], back2[1]))
 
 
-    start = band.data.clone()
-    start.requires_grad_(True)
-    banded_x = BandedMatrix(start, lu, ld)
-    banded_x_cuda = BandedMatrix(start.cuda(), lu, ld)
 
-    start2 = band2.data.clone()
+    start = band.data.clone().cuda()
+    start.requires_grad_(True)
+    banded_x_cuda = BandedMatrix(start, lu, ld)
+
+    start2 = band2.data.clone().cuda()
     start2.requires_grad_(True)
-    banded_y = BandedMatrix(start2, lu, ld)
     banded_y_cuda = BandedMatrix(start2.cuda(), lu, ld)
 
     a = bmm(banded_x_cuda, banded_y_cuda).data
