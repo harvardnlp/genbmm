@@ -42,7 +42,7 @@ def test_logbmm(batch, row, inner, col):
         assert torch.isclose(v1, v2, 1e-2).all(), "Round: " + str(i)
 
 
-from .sparse import banddiag, BandedMatrix
+from .sparse import banddiag, BandedMatrix, BandedLogMul
 def bmm(a, b):
     return b.multiply_log(a.transpose())
 def bmm_simple(a, b):
