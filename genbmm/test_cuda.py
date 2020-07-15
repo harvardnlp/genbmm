@@ -66,8 +66,10 @@ def test_sparse_nonzero(batch, n, lu, ld):
     back = torch.rand(a.shape, requires_grad=True).cuda()
     g = torch.autograd.grad(a, (band), back, create_graph=True)
 
-    back2 = (torch.rand(g[0].shape).cuda(),
-             torch.rand(g[1].shape).cuda())
+    # back2 = (torch.rand(g[0].shape).cuda(),
+    #          torch.rand(g[1].shape).cuda())
+    back2 = (torch.rand(g[0].shape).cuda())
+             # torch.rand(g[1].shape).cuda())
 
     h = torch.autograd.grad((g[0]), (band),
                             (back2[0]))
