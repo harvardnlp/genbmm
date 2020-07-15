@@ -52,24 +52,26 @@ def bmm_simple(a, b):
 
 @given(sint, mint, mint, mint)
 def test_sparse_nonzero(batch, n, lu, ld):
-    start = torch.rand(batch, n, n, requires_grad=True).cuda()
+    start = torch.rand(batch, n, n).cuda()
     band, _ = banddiag(start, lu, ld)
-    banded_x_cuda = BandedMatrix(band.cuda(), lu, ld)
+    band.requires_grad_(True)
+    banded_x_cuda = BandedMatrix(band, lu, ld)
 
-    start2 = torch.rand(batch, n, n, requires_grad=True).cuda()
-    band, _ = banddiag(start2, lu, ld)
-    banded_y_cuda = BandedMatrix(band.cuda(), lu, ld)
+    start2 = torch.rand(batch, n, n).cuda()
+    band2, _ = banddiag(start2, lu, ld)
+    band2.requires_grad_(True)
+    banded_y_cuda = BandedMatrix(band2, lu, ld)
 
 
     a = bmm(banded_x_cuda, banded_y_cuda).data
 
     back = torch.rand(a.shape, requires_grad=True).cuda()
-    g = torch.autograd.grad(a, (start, start2), back, create_graph=True)
+    g = torch.autograd.grad(a, (band, band2), back, create_graph=True)
 
     back2 = (torch.rand(g[0].shape).cuda(),
              torch.rand(g[1].shape).cuda())
 
-    h = torch.autograd.grad((g[0], g[1]), (back, start, start2),
+    h = torch.autograd.grad((g[0], g[1]), (back, band, band2),
                             (back2[0], back2[1]))
     print(h[0])
     print(h[1])
