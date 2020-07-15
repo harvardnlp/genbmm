@@ -91,9 +91,8 @@ def test_sparse(batch, n, lu, ld):
     banded_x = BandedMatrix(start, lu, ld)
     banded_x_cuda = BandedMatrix(start.cuda(), lu, ld)
 
-    start = band2.data.clone()
-    start.requires_grad_(True)
-    start2 = torch.rand(batch, n, lu + ld +1, requires_grad=True)
+    start2 = band2.data.clone()
+    start2.requires_grad_(True)
     banded_y = BandedMatrix(start2, lu, ld)
     banded_y_cuda = BandedMatrix(start2.cuda(), lu, ld)
 
