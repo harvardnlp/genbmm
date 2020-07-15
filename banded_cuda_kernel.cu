@@ -28,7 +28,7 @@ __global__ void banded_cuda_forward_kernel_mul(
   const int i = threadIdx.x + blockIdx.x * blockDim.x;
   const int j = threadIdx.y + blockIdx.y * blockDim.y;
 
-  // Creat outer dim
+  // Create outer dim
   if (i < n && j < result_lu + result_lb + 1) {
       const int self_width = a_lu + a_lb + 1;
       const int b_width = b_lu + b_lb + 1;
@@ -120,10 +120,10 @@ __global__ void banded_cuda_backward_kernel_mul(
   const int batch = blockIdx.z;
   const int i = threadIdx.x + blockIdx.x * blockDim.x;
   const int j = threadIdx.y + blockIdx.y * blockDim.y;
+  const int o = i + (j - a_lu);
 
+  if (i < n && j < a_lu + a_lb + 1 && o >= 0 && o < n) {
 
-  if (i < n && j < a_lu + a_lb + 1) {
-      const int o = i + (j - a_lu);
       scalar_t val = 0.0;
       const int gradout_width = result_lu + result_lb + 1;
 
