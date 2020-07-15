@@ -508,9 +508,9 @@ class BandedLogMul(torch.autograd.Function):
 
 
         a_lu, a_ld, b_lu, b_ld, o_lu, o_ld = bands.tolist()
-        maxes = BandedMatrix(maxes, o_lu, o_ld, 0)
-        grad_output = BandedMatrix(grad_output, o_lu, o_ld, 0)
-        switches = BandedMatrix(switches, o_lu, o_ld, 0)
+        maxes = BandedMatrix(maxes, o_lu, o_ld, -1e9)
+        grad_output = BandedMatrix(grad_output, o_lu, o_ld, -1e9)
+        switches = BandedMatrix(switches, o_lu, o_ld, -1e9)
         bands2 = torch.LongTensor([b_lu, b_ld, a_lu, a_ld, o_ld, o_lu])
         grad_b = BandedLogMulBack.apply(b, a,
                                         grad_output.transpose().data.contiguous(),
