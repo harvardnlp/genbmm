@@ -96,7 +96,7 @@ class BandedMatrix:
 
     def band_shift(self, t):
         if t == 0:
-            return self
+            retur<n self
         batch, n, off = self.data.shape
 
         pad = torch.zeros(
@@ -525,6 +525,9 @@ class BandedLogMul(torch.autograd.Function):
     @staticmethod
     def backward(ctx, grad_output):
         a, b, switches, maxes, bands = ctx.saved_tensors
+        print("A", a)
+        print("B", b)
+
         switches = switches.detach()
         maxes = maxes.detach()
         grad_a = BandedLogMulBack.apply(a, b, grad_output, switches, maxes, bands)
