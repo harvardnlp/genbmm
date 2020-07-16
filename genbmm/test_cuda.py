@@ -116,7 +116,7 @@ def test_sparse(batch, n, lu, ld):
 
     back = torch.rand(a.shape, requires_grad=True)
     # b = bmm_simple(banded_x, banded_y).data
-    b = banded_y.multiply_log_simple(banded_x).data
+    b = banded_y.multiply_log_simple(banded_x.transpose()).data
     g2 = torch.autograd.grad(b, (start, start2), back, create_graph=True)
     h2 = torch.autograd.grad((g2[0], g2[1]), (start, start2, back), (back2[0], back2[1]))
 
@@ -134,7 +134,7 @@ def test_sparse(batch, n, lu, ld):
     # print(banded_x_cuda.data)
     # print(banded_x_cuda.transpose().data)
     a = BandedLogMul.apply(banded_y_cuda.data, lu, ld,
-                           banded_x_cuda.data,
+                           banded_x_cuda.transpose().data,
                            lu, ld, lu+ld, ld+lu)
     # a = bmm(banded_x_cuda, banded_y_cuda).data
     g = torch.autograd.grad(a, (start, start2), back, create_graph=True)
