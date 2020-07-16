@@ -147,4 +147,5 @@ def test_sparse(batch, n, lu, ld):
         print(v2.shape)
         print(v1)
         print(v2)
+        print(torch.isclose(v1.cpu(), v2.cpu(), 1e-2))
         assert torch.isclose(v1.cpu(), v2.cpu(), 1e-2).all(), "Round: " + str(i)
