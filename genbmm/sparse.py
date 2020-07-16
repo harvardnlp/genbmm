@@ -46,7 +46,7 @@ def repdiag(x, lu, ld):
     unf = x.unfold(-2, lu + ld + 1, 1)
     print("unf", unf)
     dia = torch.diagonal(unf, 0, -2, -1)
-    if x.requires_grad():
+    if x.requires_grad:
         dia.requires_grad_(True)
     return dia
 
