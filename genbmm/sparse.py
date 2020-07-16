@@ -65,8 +65,11 @@ class Transpose2(torch.autograd.Function):
 class Transpose(torch.autograd.Function):
     @staticmethod
     def forward(ctx, val, lu, ld):
+        print("in", val.requires_grad)
         ctx.save_for_backward(val, torch.tensor([lu, ld]))
-        return repdiag(val.flip(-1), lu, ld)
+        out = repdiag(val.flip(-1), lu, ld)
+        print("out", out.requires_grad, out)
+        return out
 
     @staticmethod
     def backward(ctx, grad_output):
