@@ -46,7 +46,7 @@ def repdiag(x, lu, ld):
     return torch.diagonal(unf, 0, -2, -1)
 
 
-class Transpose(torch.autograd.Function):
+class Transpose2(torch.autograd.Function):
     @staticmethod
     def forward(ctx, val, lu, ld):
         ctx.save_for_backward(val, torch.tensor([lu, ld]))
