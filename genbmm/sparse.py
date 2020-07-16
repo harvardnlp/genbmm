@@ -58,6 +58,7 @@ class Transpose(torch.autograd.Function):
         val, band = ctx.saved_tensors
         lu, ld = band.tolist()
         t = Transpose.apply(grad_output, ld, lu)
+        print("backward_t", t)
         return t, None, None
 
 
@@ -510,7 +511,6 @@ class BandedLogMul(torch.autograd.Function):
         a, b, switches, maxes, bands = ctx.saved_tensors
 
         grad_a = BandedLogMulBack.apply(a, b, grad_output, switches, maxes, bands)
-
 
         a_lu, a_ld, b_lu, b_ld, o_lu, o_ld = bands.tolist()
         maxes = BandedMatrix(maxes, o_lu, o_ld, -1e9)
