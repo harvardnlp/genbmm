@@ -73,6 +73,7 @@ class Transpose(torch.autograd.Function):
     def backward(ctx, grad_output):
         val, band = ctx.saved_tensors
         lu, ld = band.tolist()
+        print("Transpose", grad_output)
         t = Transpose2.apply(grad_output, ld, lu)
         return t, None, None
 
