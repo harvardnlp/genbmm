@@ -206,7 +206,7 @@ __global__ void banded_cuda_backbackward_kernel_A(
                 if (pos_in < 0 || pos_in >= n) continue;
 
                 scalar_t a_inner_val = a[batch][i][m];
-                scalar_t b_inner_val = b[batch][pos_in][m2];
+                scalar_t b_inner_val = b[batch][o][m2];
                 scalar_t s2 = exp(a_inner_val + b_inner_val - mx) / z;
                 scalar_t v;
                 if (j == m) {
@@ -281,7 +281,7 @@ __global__ void banded_cuda_backbackward_kernel_B(
                 if (pos_in < 0 || pos_in >= n) continue;
 
                 scalar_t a_inner_val = a[batch][i][m];
-                scalar_t b_inner_val = b[batch][pos_in][m2];
+                scalar_t b_inner_val = b[batch][o][m2];
                 scalar_t s2 = exp(a_inner_val + b_inner_val - mx) / z;
                 scalar_t v;
                 if (j == m) {
