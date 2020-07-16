@@ -521,6 +521,11 @@ class BandedLogMul(torch.autograd.Function):
         a = a.contiguous()
         b = b.contiguous()
         out, _, maxes = _genbmm.forward_band(a, a_lu, a_ld, b, b_lu, b_ld, 0)
+        print("Ain", a, a.requires_grad)
+        print("Bin", b, b.requires_grad)
+        print("SWin", out, out.requires_grad)
+        print("MXin", maxes, maxes.requires_grad)
+
         ctx.save_for_backward(
             a, b, out, maxes, torch.LongTensor([a_lu, a_ld, b_lu, b_ld, o_lu, o_ld])
         )
