@@ -524,8 +524,10 @@ class BandedLogMul(torch.autograd.Function):
     @staticmethod
     def backward(ctx, grad_output):
         a, b, switches, maxes, bands = ctx.saved_tensors
-        print("A", a)
-        print("B", b)
+        print("A", a, a.requires_grad)
+        print("B", b, b.requires_grad)
+        print("SW", switches, switches,.requires_grad)
+        print("MX", maxes, maxes.requires_grad)
 
         switches = switches.detach()
         maxes = maxes.detach()
