@@ -56,9 +56,7 @@ class Transpose(torch.autograd.Function):
     def backward(ctx, grad_output):
         val, band = ctx.saved_tensors
         lu, ld = band.tolist()
-        print("in t", grad_output)
         t = Transpose.apply(grad_output, ld, lu)
-        print("out t", t)
         return t, None, None
 
 
@@ -490,9 +488,6 @@ class BandedLogMulBack(torch.autograd.Function):
             part.contiguous(),
             maxes.contiguous(),
             grad_output.contiguous(), 0)
-        print("A", grad_a)
-        print("B", grad_b)
-        print("C", grad_grad)
         return grad_a, grad_b, grad_grad, None, None, None
 
 class BandedLogMul(torch.autograd.Function):

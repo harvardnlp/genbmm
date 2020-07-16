@@ -78,7 +78,7 @@ def bmm_simple(a, b):
 #     print(h[2])
 #     assert(False)
 
-@given(sint, mint, mint, mint)
+@given(sint, sint, sint, sint)
 def test_sparse(batch, n, lu, ld):
     tmp = torch.rand(batch, n, n)
     band, _ = banddiag(tmp, lu, ld)
