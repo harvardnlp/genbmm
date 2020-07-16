@@ -273,15 +273,16 @@ __global__ void banded_cuda_backbackward_kernel_B(
             scalar_t inner = 0.0;
 
             // Loop over inner dim
+            const int o2 =  i + (k - result_lu);
             const int self_width = a_lu + a_lb + 1;
             for (int m = 0; m < self_width; ++m) {
                 const int pos_in = (i + (m - a_lu));
-                int m2 = (pos_in - o) + b_lu;
+                int m2 = (pos_in - o2) + b_lu;
                 if (m2 < 0 || m2 >= b_width) continue;
                 if (pos_in < 0 || pos_in >= n) continue;
 
                 scalar_t a_inner_val = a[batch][i][m];
-                scalar_t b_inner_val = b[batch][o][m2];
+                scalar_t b_inner_val = b[batch][o2][m2];
                 scalar_t s2 = exp(a_inner_val + b_inner_val - mx) / z;
                 scalar_t v;
                 if (j == m) {
