@@ -44,8 +44,7 @@ def repdiag(x, lu, ld):
     )
     unf = x.unfold(-2, lu + ld + 1, 1)
     dia = torch.diagonal(unf, 0, -2, -1)
-    # dia.requires_grad_(True)
-    return x
+    return dia
 
 
 class Transpose2(torch.autograd.Function):
