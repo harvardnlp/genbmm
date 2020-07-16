@@ -490,7 +490,9 @@ class BandedLogMulBack(torch.autograd.Function):
             part.contiguous(),
             maxes.contiguous(),
             grad_output.contiguous(), 0)
-
+        print("A", grad_a)
+        print("B", grad_b)
+        print("C", grad_grad)
         return grad_a, grad_b, grad_grad, None, None, None
 
 class BandedLogMul(torch.autograd.Function):
