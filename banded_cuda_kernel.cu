@@ -245,8 +245,8 @@ __global__ void banded_cuda_backbackward_kernel_B(
     const int k2 = threadIdx.y + blockIdx.y * blockDim.y;
     const int a_width = a_lu + a_lb + 1;
     const int b_width = b_lu + b_lb + 1;
-    int check = pos + (k2 - b_lu);
-    if (pos < n && k2 < b_lu + b_lb + 1 &&  check < n && and check > 0) {
+    const int check = pos + (k2 - b_lu);
+    if (pos < n && k2 < b_lu + b_lb + 1 && check < n &&  check > 0) {
         /* const int o = i + (j - b_lu); */
 
         scalar_t b_val = b[batch][pos][k2];
