@@ -42,13 +42,10 @@ def repdiag(x, lu, ld):
         ],
         dim=-2,
     )
-    print("x", x)
     unf = x.unfold(-2, lu + ld + 1, 1)
-    print("unf", unf)
     dia = torch.diagonal(unf, 0, -2, -1)
-    if x.requires_grad:
-        dia.requires_grad_(True)
-    return dia
+    # dia.requires_grad_(True)
+    return x
 
 
 class Transpose2(torch.autograd.Function):
@@ -61,9 +58,7 @@ class Transpose2(torch.autograd.Function):
     def backward(ctx, grad_output):
         val, band = ctx.saved_tensors
         lu, ld = band.tolist()
-        print(grad_output)
         t = repdiag(grad_output.flip(-1), ld, lu)
-        print("T", t)
         return t, None, None
 
 
