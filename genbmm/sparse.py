@@ -58,6 +58,7 @@ class Transpose(torch.autograd.Function):
         lu, ld = band.tolist()
         print(grad_output)
         t = repdiag(grad_output.flip(-1), ld, lu)
+        print("T", t)
         return t, None, None
 
 
