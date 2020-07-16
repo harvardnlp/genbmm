@@ -96,7 +96,7 @@ class BandedMatrix:
 
     def band_shift(self, t):
         if t == 0:
-            retur<n self
+            return self
         batch, n, off = self.data.shape
 
         pad = torch.zeros(
