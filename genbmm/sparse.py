@@ -69,6 +69,8 @@ class Transpose(torch.autograd.Function):
         ctx.save_for_backward(val, torch.tensor([lu, ld]))
         out = repdiag(val.flip(-1), lu, ld)
         print("out", out.requires_grad, out)
+        if val.requires_grad:
+            out.requires_grad_(True)
         return out
 
     @staticmethod
