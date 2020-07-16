@@ -42,7 +42,7 @@ def test_logbmm(batch, row, inner, col):
         assert torch.isclose(v1, v2, 1e-2).all(), "Round: " + str(i)
 
 
-from .sparse import banddiag, BandedMatrix, BandedLogMul, repdiag
+from .sparse import banddiag, BandedMatrix, BandedLogMul
 def bmm(a, b):
     return b.multiply_log(a.transpose())
 def bmm_simple(a, b):
@@ -133,10 +133,10 @@ def test_sparse(batch, n, lu, ld):
     # return b.multiply_log(a.transpose())
     # print(banded_x_cuda.data)
     # print(banded_x_cuda.transpose().data)
-    a = BandedLogMul.apply(banded_y_cuda.data, lu, ld,
-                           repdiag(banded_x_cuda.data.flip(-1), lu, ld),
-                           ld, lu, lu+lu, ld+ld)
-    # a = bmm(banded_x_cuda, banded_y_cuda).data
+    # a = BandedLogMul.apply(banded_y_cuda.data, lu, ld,
+    #                        banded_x_cuda.transpose().data,
+    #                        ld, lu, ld+ld, lu+lu)
+    a = bmm(banded_x_cuda, banded_y_cuda).data
     g = torch.autograd.grad(a, (start, start2), back, create_graph=True)
 
     h = torch.autograd.grad((g[0], g[1]), (start, start2, back),
