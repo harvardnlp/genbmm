@@ -56,7 +56,10 @@ class Transpose(torch.autograd.Function):
     def backward(ctx, grad_output):
         val, band = ctx.saved_tensors
         lu, ld = band.tolist()
-        return Transpose.apply(grad_output, ld, lu), None, None
+        print("in t", grad_output)
+        t = Transpose.apply(grad_output, ld, lu)
+        print("out t", t)
+        return t, None, None
 
 
 class BandedMatrix:
