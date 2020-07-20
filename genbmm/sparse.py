@@ -537,11 +537,13 @@ class BandedLogMul(torch.autograd.Function):
         bands = ctx.bands
         maxes = ctx.maxes
         a, b, switches = ctx.saved_tensors
+
         print("A", a, a.requires_grad)
         print("B", b, b.requires_grad)
         print("SW", switches, switches.requires_grad)
         print("MX", maxes, maxes.requires_grad)
-
+        a = a.contiguous()
+        b = b.contiguous()
         switches = switches.detach()
         maxes = maxes.detach()
         grad_a = BandedLogMulBack.apply(a, b, grad_output, switches, maxes, bands)
