@@ -510,9 +510,6 @@ class BandedLogMulBack(torch.autograd.Function):
             part.contiguous(),
             maxes.contiguous(),
             grad_output.contiguous(), 0)
-        print("A", grad_a)
-        print("B", grad_b)
-        print("G", grad_grad)
         return grad_a.contiguous(), grad_b.contiguous(), grad_grad.contiguous(), None, None, None
 
 class BandedLogMul(torch.autograd.Function):
@@ -521,10 +518,6 @@ class BandedLogMul(torch.autograd.Function):
         a_cont = a.contiguous()
         b_cont = b.contiguous()
         out, _, maxes = _genbmm.forward_band(a_cont, a_lu, a_ld, b_cont, b_lu, b_ld, 0)
-        print("Ain", a, a.requires_grad)
-        print("Bin", b, b.requires_grad)
-        print("SWin", out, out.requires_grad)
-        print("MXin", maxes, maxes.requires_grad)
         ctx.maxes = maxes
         ctx.bands = torch.LongTensor([a_lu, a_ld, b_lu, b_ld, o_lu, o_ld])
         ctx.save_for_backward(
@@ -538,10 +531,6 @@ class BandedLogMul(torch.autograd.Function):
         maxes = ctx.maxes
         a, b, switches = ctx.saved_tensors
 
-        print("A", a, a.requires_grad)
-        print("B", b, b.requires_grad)
-        print("SW", switches, switches.requires_grad)
-        print("MX", maxes, maxes.requires_grad)
         a = a.contiguous()
         b = b.contiguous()
         switches = switches.detach()
