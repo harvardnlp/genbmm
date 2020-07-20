@@ -526,7 +526,7 @@ class BandedLogMul(torch.autograd.Function):
         print("SWin", out, out.requires_grad)
         print("MXin", maxes, maxes.requires_grad)
         ctx.maxes = maxes
-        ctx.sizes = torch.LongTensor([a_lu, a_ld, b_lu, b_ld, o_lu, o_ld])
+        ctx.bands = torch.LongTensor([a_lu, a_ld, b_lu, b_ld, o_lu, o_ld])
         ctx.save_for_backward(
             a, b, out
         )
