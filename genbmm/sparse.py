@@ -43,20 +43,38 @@ def repdiag(x, lu, ld):
         dim=-2,
     )
     unf = x.unfold(-2, lu + ld + 1, 1)
-    return torch.diagonal(unf, 0, -2, -1)
+    dia = torch.diagonal(unf, 0, -2, -1)
+    return dia
+
+
+class Transpose2(torch.autograd.Function):
+    @staticmethod
+    def forward(ctx, val, lu, ld):
+        ctx.save_for_backward(val, torch.tensor([lu, ld]))
+        return repdiag(val.flip(-1), lu, ld)
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        val, band = ctx.saved_tensors
+        lu, ld = band.tolist()
+        t = repdiag(grad_output.flip(-1), ld, lu)
+        return t, None, None
+
 
 
 class Transpose(torch.autograd.Function):
     @staticmethod
     def forward(ctx, val, lu, ld):
-        ctx.save_for_backward(torch.tensor([lu, ld]))
-        return repdiag(val.flip(-1), lu, ld)
+        ctx.save_for_backward(val, torch.tensor([lu, ld]))
+        out = repdiag(val.flip(-1), lu, ld)
+        return out
 
     @staticmethod
     def backward(ctx, grad_output):
-        val, = ctx.saved_tensors
-        lu, ld = val.tolist()
-        return repdiag(grad_output.flip(-1), ld, lu), None, None
+        val, band = ctx.saved_tensors
+        lu, ld = band.tolist()
+        t = Transpose2.apply(grad_output, ld, lu)
+        return t, None, None
 
 
 class BandedMatrix:
@@ -388,7 +406,7 @@ class BandedMul(torch.autograd.Function):
     def forward(ctx, a, a_lu, a_ld, b, b_lu, b_ld, o_lu, o_ld):
         a = a.contiguous()
         b = b.contiguous()
-        out, _ = _genbmm.forward_band(a, a_lu, a_ld, b, b_lu, b_ld, 3)
+        out, _, _ = _genbmm.forward_band(a, a_lu, a_ld, b, b_lu, b_ld, 3)
         ctx.save_for_backward(
             a, b, out, torch.LongTensor([a_lu, a_ld, b_lu, b_ld, o_lu, o_ld])
         )
@@ -429,25 +447,32 @@ class BandedMul(torch.autograd.Function):
         return grad_a, None, None, grad_b, None, None, None, None
 
 
-class BandedLogMul(torch.autograd.Function):
-    @staticmethod
-    def forward(ctx, a, a_lu, a_ld, b, b_lu, b_ld, o_lu, o_ld):
-        a = a.contiguous()
-        b = b.contiguous()
-        out, _ = _genbmm.forward_band(a, a_lu, a_ld, b, b_lu, b_ld, 0)
-        ctx.save_for_backward(
-            a, b, out, torch.LongTensor([a_lu, a_ld, b_lu, b_ld, o_lu, o_ld])
-        )
-        return out
+# class BandedLogMulBack(torch.autograd.Function):
+#     @staticmethod
+#     def forward(ctx, a, b, grad_out, part, maxes):
+#         ctx.save_for_backward(a, b, grad_out, part, maxes)
+#         grad_a, = _genbmm.backward(a, b, grad_out, part, maxes, 0)
+#         return grad_a
 
+#     @staticmethod
+#     def backward(ctx, grad_output):
+#         a, b, grad_out, part, maxes = ctx.saved_tensors
+#         grad_a, grad_b, grad_grad = _genbmm.backbackward(a, b, grad_out.contiguous(),
+#                                                          part, maxes, grad_output.contiguous(), 0)
+
+#         return grad_a, grad_b, grad_grad, None, None
+
+
+class BandedLogMulBack(torch.autograd.Function):
     @staticmethod
-    def backward(ctx, grad_output):
-        a, b, switches, bands = ctx.saved_tensors
+    def forward(ctx, a, b, grad_out, part, maxes, bands):
+        ctx.save_for_backward(a, b, grad_out, part, maxes, bands)
         a_lu, a_ld, b_lu, b_ld, o_lu, o_ld = bands.tolist()
+
         a = BandedMatrix(a, a_lu, a_ld, -1e9)
         b = BandedMatrix(b, b_lu, b_ld, -1e9)
-        grad_output = BandedMatrix(grad_output, o_lu, o_ld, -1e9)
-        switches = BandedMatrix(switches.float(), o_lu, o_ld, -1e9)
+        # maxes = BandedMatrix(maxes.float(), o_lu, o_ld, -1e9)
+        grad_out = BandedMatrix(grad_out.float(), o_lu, o_ld, -1e9)
 
         grad_a, = _genbmm.backward_band(
             a.data,
@@ -456,23 +481,99 @@ class BandedLogMul(torch.autograd.Function):
             b.data,
             b.lu,
             b.ld,
-            grad_output.data.contiguous(),
-            switches.data,
-            0,
+            grad_out.data.contiguous(),
+            part.contiguous(),
+            0
         )
+        return grad_a
 
-        grad_b, = _genbmm.backward_band(
-            b.data.contiguous(),
-            b.lu,
-            b.ld,
-            a.data.contiguous(),
-            a.lu,
-            a.ld,
-            grad_output.transpose().data.contiguous(),
-            switches.transpose().data.contiguous(),
-            0,
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        a, b, grad_out, part, maxes, bands = ctx.saved_tensors
+        a_lu, a_ld, b_lu, b_ld, o_lu, o_ld = bands.tolist()
+        # a = BandedMatrix(a, a_lu, a_ld, -1e9)
+        # b = BandedMatrix(b, b_lu, b_ld, -1e9)
+        # part = BandedMatrix(part.float(), o_lu, o_ld, -1e9)
+        # maxes = BandedMatrix(maxes.float(), o_lu, o_ld, -1e9)
+        # grad_out = BandedMatrix(grad_out.float(), o_lu, o_ld, -1e9)
+
+        grad_a, grad_b, grad_grad = _genbmm.backbackward_band(
+            a, a_lu, a_ld,
+            b, b_lu, b_ld,
+            grad_out.contiguous(),
+            part.contiguous(),
+            maxes.contiguous(),
+            grad_output.contiguous(), 0)
+        return grad_a.contiguous(), grad_b.contiguous(), grad_grad.contiguous(), None, None, None
+
+class BandedLogMul(torch.autograd.Function):
+    @staticmethod
+    def forward(ctx, a, a_lu, a_ld, b, b_lu, b_ld, o_lu, o_ld):
+        a_cont = a.contiguous()
+        b_cont = b.contiguous()
+        out, _, maxes = _genbmm.forward_band(a_cont, a_lu, a_ld, b_cont, b_lu, b_ld, 0)
+        ctx.maxes = maxes
+        ctx.bands = torch.LongTensor([a_lu, a_ld, b_lu, b_ld, o_lu, o_ld])
+        ctx.save_for_backward(
+            a, b, out
         )
+        return out
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        bands = ctx.bands
+        maxes = ctx.maxes
+        a, b, switches = ctx.saved_tensors
+
+        a = a.contiguous()
+        b = b.contiguous()
+        switches = switches.detach()
+        maxes = maxes.detach()
+        grad_a = BandedLogMulBack.apply(a, b, grad_output, switches, maxes, bands)
+
+        a_lu, a_ld, b_lu, b_ld, o_lu, o_ld = bands.tolist()
+        maxes = BandedMatrix(maxes, o_lu, o_ld, -1e9)
+        grad_output = BandedMatrix(grad_output, o_lu, o_ld, 0)
+        switches = BandedMatrix(switches, o_lu, o_ld, -1e9)
+        bands2 = torch.LongTensor([b_lu, b_ld, a_lu, a_ld, o_ld, o_lu])
+        grad_b = BandedLogMulBack.apply(b, a,
+                                        grad_output.transpose().data.contiguous(),
+                                        switches.transpose().data.contiguous(),
+                                        maxes.transpose().data.contiguous(),
+                                        bands2)
         return grad_a, None, None, grad_b, None, None, None, None
+        # a_lu, a_ld, b_lu, b_ld, o_lu, o_ld = bands.tolist()
+
+        # a = BandedMatrix(a, a_lu, a_ld, -1e9)
+        # b = BandedMatrix(b, b_lu, b_ld, -1e9)
+        # grad_output = BandedMatrix(grad_output, o_lu, o_ld, -1e9)
+        # switches = BandedMatrix(switches.float(), o_lu, o_ld, -1e9)
+
+        # grad_a, = _genbmm.backward_band(
+        #     a.data,
+        #     a.lu,
+        #     a.ld,
+        #     b.data,
+        #     b.lu,
+        #     b.ld,
+        #     grad_output.data.contiguous(),
+        #     switches.data,
+        #     0,
+        # )
+
+        # grad_b, = _genbmm.backward_band(
+        #     b.data.contiguous(),
+        #     b.lu,
+        #     b.ld,
+        #     a.data.contiguous(),
+        #     a.lu,
+        #     a.ld,
+        #     grad_output.transpose().data.contiguous(),
+        #     switches.transpose().data.contiguous(),
+        #     0,
+        # )
+        # return grad_a, None, None, grad_b, None, None, None, None
 
 
 class BandedMaxMul(torch.autograd.Function):
@@ -481,7 +582,7 @@ class BandedMaxMul(torch.autograd.Function):
         a = a.contiguous()
         b = b.contiguous()
 
-        out, indices = _genbmm.forward_band(a, a_lu, a_ld, b, b_lu, b_ld, 1)
+        out, indices, _ = _genbmm.forward_band(a, a_lu, a_ld, b, b_lu, b_ld, 1)
 
         at = BandedMatrix(a, a_lu, a_ld, -1e9)
         bt = BandedMatrix(b, b_lu, b_ld, -1e9)

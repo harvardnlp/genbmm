@@ -5,10 +5,14 @@ from torch.utils.cpp_extension import BuildExtension, CUDAExtension
 ext = []
 if torch.cuda.is_available():
     ext = [
-        CUDAExtension('_genbmm', [
+        CUDAExtension('_genbmm',
+                      [
             'matmul_cuda.cpp',
             'matmul_cuda_kernel.cu',
-        ]),
+            'banded_cuda_kernel.cu',
+                      ],
+                      extra_compile_args={'cxx': ['-w'],
+                                          'nvcc': ['-w']}),
     ]
 
 setup(
