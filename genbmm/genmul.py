@@ -60,7 +60,7 @@ class MaxMatMul(torch.autograd.Function):
     def backward(ctx, grad_output):
         a, b, switches = ctx.saved_tensors
         grad_a, grad_b = _genbmm.backward(
-            a, b, grad_output.contiguous(), switches.float(), 1
+            a, b, grad_output.contiguous(), switches.to(a.dtype), switches.to(a.dtype), 1
         )
         return grad_a, grad_b
 
