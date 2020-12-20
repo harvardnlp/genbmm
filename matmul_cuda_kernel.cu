@@ -457,7 +457,7 @@ std::vector<torch::Tensor> matmul_cuda_backbackward(
 
 
   auto grad_b = torch::zeros_like(b);
-  auto grad_bp = grad_b.packed_accessor32<float,3,torch::RestrictPtrTraits>();
+  /* auto grad_bp = grad_b.packed_accessor32<float,3,torch::RestrictPtrTraits>(); */
   const int threads2 = 32;
   const dim3 blocks2(in_size / threads2 + 1,
                     b_size / threads2 + 1,
@@ -534,7 +534,7 @@ std::vector<torch::Tensor> matmul_cuda_backward(
 
 
   auto grad_b = torch::zeros_like(b);
-  auto grad_bp = grad_b.packed_accessor32<float,3,torch::RestrictPtrTraits>();
+  /* auto grad_bp = grad_b.packed_accessor32<float,3,torch::RestrictPtrTraits>(); */
   const int threads2 = 32;
   const dim3 blocks2(in_size / threads2 + 1,
                     b_size / threads2 + 1,
