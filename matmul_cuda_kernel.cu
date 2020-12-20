@@ -321,8 +321,11 @@ __global__ void max_cuda_backward_kernel_A(
   if (row < a_size && col < in_size) {
       scalar_t val = 0.0;
       for (int k = 0; k < b_size; ++k) {
-          scalar_t v = (col == part[n][row][k]) ? b[n][col][k] : 0.0;
-          val += v * grad_output[n][row][k];
+          /* scalar_t v = (col == part[n][row][k]) ? b[n][col][k] : 0.0; */
+          /* val += v * grad_output[n][row][k]; */
+          if (col == part[n][row][k] {
+              val += b[n][col][k] * grad_output[n][row][k];
+          }
       }
       grad_a[n][row][col] = val;
   }
