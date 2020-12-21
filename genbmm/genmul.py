@@ -12,7 +12,7 @@ class LogMatMulBack(torch.autograd.Function):
     @staticmethod
     def forward(ctx, a, b, grad_out, part, maxes):
         ctx.save_for_backward(a, b, grad_out, part, maxes)
-        grad_a, = _genbmm.backward(a, b, grad_out, part, maxes, 0)
+        grad_a, _ = _genbmm.backward(a, b, grad_out, part, maxes, 0)
         return grad_a
 
     @staticmethod
@@ -76,9 +76,9 @@ class SampleMatMul(torch.autograd.Function):
     def backward(ctx, grad_output):
         a, b, switches = ctx.saved_tensors
         grad_a, grad_b = _genbmm.backward(
-            a, b, grad_output.contiguous(), switches.float(), 2
+            a.float(), b.float(), grad_output.contiguous().float(), switches.float(), switches.float(), 2
         )
-        return grad_a, grad_b
+        return grad_a.to(a.dtype), grad_b.to(b.dtype)
 
 
 logbmm = LogMatMul.apply
