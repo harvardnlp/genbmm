@@ -539,7 +539,7 @@ std::vector<torch::Tensor> matmul_cuda_forward(
                       in_size, a_size, b_size);
               } ) );
       return {out, indices};
-
+  }
 }
 
 
