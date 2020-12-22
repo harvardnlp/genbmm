@@ -54,6 +54,15 @@ c2 = (a + b).logsumexp(-2)
 # Grad
 sample_a, sample_b = torch.autograd.grad(c.sum(), (a, b))
 # c2 = (a + b).softmax(-2).sample(-2)
+
+# Product-Max
+c = genbmm.prodmaxbmm(a, b)
+# Equivalent
+a = a.unsqueeze(-1)
+b = b.unsqueeze(-3)
+c2, = (a * b).max(-2)
+# Grad
+grad_a, grad_b = torch.autograd.grad(c.sum(), (a, b))
 ```
 
 ### Banded Sparse Matrices
