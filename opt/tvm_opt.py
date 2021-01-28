@@ -3,6 +3,7 @@ import os
 import time
 import torch
 import numpy as np
+import logging
 
 sys.path.append('/tvm/python')
 sys.path.append('/tvm/topi/python')
@@ -11,39 +12,41 @@ os.environ['TVM_HOME'] = '/tvm'
 
 import tvm
 from tvm import autotvm
+from tvm import te
 
+@autotvm.template("logsummul")
+def logsummul(n, l, m, dtype):
+    nn = n
+    n = nn
+    bb = 1
+    b = bb
+    #n = te.var('n')
+    #n = te.convert(nn)
+    #b = te.var('b')
+    #b = te.convert(bb)
+    #m, l = nn, nn
+    A = te.placeholder((bb, nn, l), name='A', dtype=dtype)
+    B = te.placeholder((bb, m, l), name='B', dtype=dtype)
+    k = te.reduce_axis((0, l), name='k')
+    k2 = te.reduce_axis((0, l), name='k2')
 
-@autotvm.template
-def logsummul(dtype):
-    nn = 512
-    bb = 32
-    n = tvm.var('n')
-    n = tvm.convert(nn)
-    b = tvm.var('b')
-    b = tvm.convert(bb)
-    m, l = n, n
-    A = tvm.placeholder((b, n, l), name='A', dtype=dtype)
-    B = tvm.placeholder((b, m, l), name='B', dtype=dtype)
-    k = tvm.reduce_axis((0, l), name='k')
-    k2 = tvm.reduce_axis((0, l), name='k2')
-
-    M = tvm.compute(
+    M = te.compute(
         (b, m, n),
-        lambda bb, ii, jj: tvm.max(A[bb, jj, k] + B[bb, ii, k], axis=k),
+        lambda bb, ii, jj: te.max(A[bb, jj, k] + B[bb, ii, k], axis=k),
         name='M'
     )
-    M2 = tvm.compute(
+    M2 = te.compute(
         (b, m, n),
-        lambda bb, ii, jj: tvm.sum(tvm.exp(A[bb, jj, k2] + B[bb, ii, k2]- M[bb, ii, jj]), axis=k2),
-        #lambda bb, ii, jj: tvm.sum(tvm.exp(A[bb, jj, k2] + B[bb, ii, k2]- M[bb, ii, jj]), axis=k2),
+        lambda bb, ii, jj: te.sum(te.exp(A[bb, jj, k2] + B[bb, ii, k2]- M[bb, ii, jj]), axis=k2),
+        #lambda bb, ii, jj: te.sum(te.exp(A[bb, jj, k2] + B[bb, ii, k2]- M[bb, ii, jj]), axis=k2),
         name='M2')
 
-    C = tvm.compute(
+    C = te.compute(
         (b, m, n),
-        lambda bb, ii, jj: tvm.log(M2[bb, ii, jj]) + M[bb, ii, jj],
+        lambda bb, ii, jj: te.log(M2[bb, ii, jj]) + M[bb, ii, jj],
         name='C')
 
-    s = tvm.create_schedule(C.op)
+    s = te.create_schedule(C.op)
 
     AA = s.cache_read(A, "shared", [M])
     AL = s.cache_read(AA, "local", [M])
@@ -79,13 +82,13 @@ def logsummul(dtype):
     x_nthreads = cfg["x_t"].val
     ty, yi = s[C].split(y, nparts=y_nthreads)
     tx, xi = s[C].split(x, nparts=x_nthreads)
-    thread_x = tvm.thread_axis((0, x_nthreads), "threadIdx.x")
-    thread_y = tvm.thread_axis((0, y_nthreads), "threadIdx.y")
+    thread_x = te.thread_axis((0, x_nthreads), "threadIdx.x")
+    thread_y = te.thread_axis((0, y_nthreads), "threadIdx.y")
 
     s[C].reorder(b, by, bx, ty, tx, yi, xi)
-    s[C].bind(b, tvm.thread_axis("blockIdx.z"))
-    s[C].bind(by, tvm.thread_axis("blockIdx.y"))
-    s[C].bind(bx, tvm.thread_axis("blockIdx.x"))
+    s[C].bind(b, te.thread_axis("blockIdx.z"))
+    s[C].bind(by, te.thread_axis("blockIdx.y"))
+    s[C].bind(bx, te.thread_axis("blockIdx.x"))
     s[C].bind(ty, thread_y)
     s[C].bind(tx, thread_x)
     if unroll:
@@ -131,28 +134,50 @@ def logsummul(dtype):
 
     return s, [A, B, C]
 
+def get_abc(shape, constructor=None):
+        """Return random a, b and empty c with the same shape.
+        """
+        np.random.seed(0)
+        a = np.random.normal(size=shape).astype(np.float32)
+        b = np.random.normal(size=shape).astype(np.float32)
+        c = np.empty_like(a)
+        if constructor:
+            a, b, c = [constructor(x) for x in (a, b, c)]
+        return a, b, c
 
-task = autotvm.task.create(logsummul, args=('float32',), target='cuda', target_host="llvm")
-with autotvm.apply_history_best('best.log'):
-    with tvm.target.create("cuda"):
-        s_mult, arg_bufs = logsummul('float32')
-        mod = tvm.build(s_mult, arg_bufs, target="cuda", target_host="llvm")
+task = autotvm.task.create("logsummul", args=(512, 256, 512*512, 'float32',), target='cuda', target_host="llvm")
+with autotvm.apply_history_best('matmul.log'):
+    with tvm.target.Target("cuda"):
+        s_mult, arg_bufs = logsummul(512, 256, 512*512, 'float32')
+        mod = tvm.build(s_mult, arg_bufs)
+
 from tvm.contrib.dlpack import to_pytorch_func
+
 logsum_pytorch = to_pytorch_func(mod)
 
+#import torch
+#out = torch.rand(1, 512*512, 512).cuda()
+
+#logsum_pytorch(torch.rand(1, 512, 256).cuda(), torch.rand(1, 512*512, 256).cuda(), out)
+
+
+
 if __name__ == "__main__":
+
     from tvm import autotvm
 
-    task = autotvm.task.create(logsummul, args=('float32',), target='cuda', target_host="llvm")
+    task = autotvm.task.create("logsummul", args=(512, 256, 512*512,'float32',), target='cuda', target_host="llvm")
     print(task.config_space)
 
+    logging.getLogger("autotvm").setLevel(logging.DEBUG)
+    logging.getLogger("autotvm").addHandler(logging.StreamHandler(sys.stdout))
     measure_option = autotvm.measure_option(
         builder=autotvm.LocalBuilder(n_parallel=5),
-        runner=autotvm.LocalRunner(number=10, repeat=3, timeout=10, min_repeat_ms=50))
+        runner=autotvm.LocalRunner(number=5, repeat=2, timeout=60, min_repeat_ms=50))
 
 
     tuner = autotvm.tuner.RandomTuner(task)
-    tuner.tune(n_trial=100,
+    tuner.tune(n_trial=10,
                measure_option=measure_option,
                callbacks=[autotvm.callback.log_to_file('matmul.log')])
 
@@ -167,21 +192,21 @@ if __name__ == "__main__":
             a, b, c = [constructor(x) for x in (a, b, c)]
         return a, b, c
 
-    autotvm.record.pick_best("matmul.log", "best.log")
-    with autotvm.apply_history_best('best.log'):
-        with tvm.target.create("cuda"):
-            s_mult, arg_bufs = logsummul('float32')
-            mod = tvm.build(s_mult, arg_bufs, target="cuda", target_host="llvm")
-            a, b, c, = get_abc((32, 512, 512), lambda x: tvm.nd.array(x, ctx=tvm.gpu()))
+    # autotvm.record.pick_best("matmul.log", "best.log")
+    # with autotvm.apply_history_best('best.log'):
+    #     with tvm.target.create("cuda"):
+    #         s_mult, arg_bufs = logsummul('float32')
+    #         mod = tvm.build(s_mult, arg_bufs, target="cuda", target_host="llvm")
+    #         a, b, c, = get_abc((32, 512, 512), lambda x: tvm.nd.array(x, ctx=tvm.gpu()))
 
-    k = torch.rand(32, 512, 512).cuda()
-    import time
-    num_trials = 10
-    start_time = time.time()
-    for _ in range(num_trials):
-        #z = torch.matmul(k, k)
-        mod(a, b, c)
-    torch.cuda.synchronize()
-    end_time = time.time()
-    op = ""
-    print(f"{op}: {(end_time - start_time) / num_trials}")
+    # k = torch.rand(32, 512, 512).cuda()
+    # import time
+    # num_trials = 10
+    # start_time = time.time()
+    # for _ in range(num_trials):
+    #     #z = torch.matmul(k, k)
+    #     mod(a, b, c)
+    # torch.cuda.synchronize()
+    # end_time = time.time()
+    # op = ""
+    # print(f"{op}: {(end_time - start_time) / num_trials}")
