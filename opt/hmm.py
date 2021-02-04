@@ -11,7 +11,7 @@ os.environ['TVM_HOME'] = '/tvm'
 
 import tvm
 from tvm import autotvm
-
+from tvm import te
 
 @autotvm.template
 def hmm_runner_max(dtype):
@@ -138,58 +138,55 @@ def hmm_runner_max(dtype):
 
 
 
-@autotvm.template
-def hmm_runner(dtype):
+@autotvm.template("hmm")
+def hmm_runner(nn, b, t, dtype):
     #n_num_step = 128
     #n_num_hidden = 1152
     #n_batch_size = 4
     #num_step = tvm.var("num_step")
-
-    nn = 1152
-    bb = 32
-    tt = 128
-    n = tvm.convert(nn)
+    # nn = 512
+    bb = b
+    tt = t
+    n = nn
     m = n
-    b = tvm.var("batch")
-    t = tvm.var("num_step")
     l = n
-    k = tvm.reduce_axis((0, l), name='k')
-    k2 = tvm.reduce_axis((0, l), name='k2')
-    X = tvm.placeholder((t-1, b, n, m), name="X", dtype=dtype)
+    k = te.reduce_axis((0, l), name='k')
+    k2 = te.reduce_axis((0, l), name='k2')
+    X = te.placeholder((t-1, b, n, m), name="X", dtype=dtype)
 
-    s_state = tvm.placeholder((t, b, n))
-    s_init = tvm.compute((1, b, n), lambda a, b, c: 0.0)
+    s_state = te.placeholder((t, b, n))
+    s_init = te.compute((1, b, n), lambda a, b, c: 0.0)
 
 
     # Algorithm to compute
-    M = tvm.compute(
+    M = te.compute(
         (t, b, n),
-        lambda t, bb, ii: tvm.max(s_state[t-1, bb, k] + X[t-1, bb, k, ii], axis=k),
+        lambda t, bb, ii: te.max(s_state[t-1, bb, k] + X[t-1, bb, k, ii], axis=k),
         name="M")
 
-    M2 = tvm.compute(
+    M2 = te.compute(
         (t, b, n),
-        lambda t, bb, ii: tvm.sum(tvm.exp(s_state[t-1, bb, k2] + X[t-1, bb, k2, ii]
+        lambda t, bb, ii: te.sum(te.exp(s_state[t-1, bb, k2] + X[t-1, bb, k2, ii]
                                           - M[t, bb, ii]), axis=k2),
         name="M2")
-    C = tvm.compute(
+    C = te.compute(
         (t, b, n),
         #lambda t, bb, ii: M[t, bb, ii] + M2[t, bb,ii],
-        lambda t, bb, ii: tvm.log(M2[t, bb, ii]) + M[t, bb, ii],
+        lambda t, bb, ii: te.log(M2[t, bb, ii]) + M[t, bb, ii],
         name='C')
 
-    s_scan = tvm.scan(s_init, C, s_state, inputs=[X])
+    s_scan = te.scan(s_init, C, s_state, inputs=[X])
     # End algorithm to compute
 
 
-    s = tvm.create_schedule(s_scan.op)
-    #tvm.lower(s, [X], simple_mode=True )
+    s = te.create_schedule(s_scan.op)
+    #te.lower(s, [X], simple_mode=True )
 
     cfg = autotvm.get_config()
-    cfg.define_knob("y_t", [8])
-    cfg.define_knob("x_t", [16])
-    cfg.define_knob("sm", [24])
-    cfg.add_flop(1)
+    cfg.define_knob("y_t", [2, 4, 8])
+    cfg.define_knob("x_t", [2, 4, 8, 16])
+    cfg.define_knob("sm", [2, 8, 16, 24])
+    cfg.add_flop(10 * t * n * n * b)
 
     num_thread_y = cfg["y_t"].val
     num_thread_x = cfg["x_t"].val * 3
@@ -199,7 +196,7 @@ def hmm_runner(dtype):
     DETECT_GLOBAL_BARRIER = False
     detect_global_barrier = DETECT_GLOBAL_BARRIER
 
-    s = tvm.create_schedule(s_scan.op)
+    s = te.create_schedule(s_scan.op)
     CL = C
     SS = s.cache_read(s_state, "shared", [M])
     SL = s.cache_read(SS, "local", [M])
@@ -216,9 +213,9 @@ def hmm_runner(dtype):
     ko2, ki2 = s[M2].split(s[M2].op.reduce_axis[0], nparts=num_thread_y)
     MLF2 = s.rfactor(M2, ko2)
 
-    block_x = tvm.thread_axis((0, num_sm), "blockIdx.x")
-    thread_x = tvm.thread_axis((0, num_thread_x), "threadIdx.x")
-    thread_y = tvm.thread_axis((0, num_thread_y), "threadIdx.y")
+    block_x = te.thread_axis((0, num_sm), "blockIdx.x")
+    thread_x = te.thread_axis((0, num_thread_x), "threadIdx.x")
+    thread_y = te.thread_axis((0, num_thread_y), "threadIdx.y")
     if PERSIST_KERNEL:
         s[s_scan.op].env_threads([block_x, thread_y, thread_x])
 
@@ -279,52 +276,54 @@ def hmm_runner(dtype):
     s[SS2].bind(tx, thread_x)
     return s, [X, s_scan]
 
-#task = autotvm.task.create(hmm, args=('float32',), target='cuda', target_host="llvm")
+task = autotvm.task.create("hmm", args=(512, 16, 10, 'float32',), target='cuda', target_host="llvm")
 with autotvm.apply_history_best('best.log'):
     with tvm.target.create("cuda"):
-        s_mult, arg_bufs = hmm_runner('float32')
+        s_mult, arg_bufs = hmm_runner(512, 16, 10, 'float32')
         mod = tvm.build(s_mult, arg_bufs, target="cuda", target_host="llvm")
 
 from tvm.contrib.dlpack import to_pytorch_func
 hmm_pytorch = to_pytorch_func(mod)
 
-def fb(x):
-    time, batch, size, _ = x.shape
-    out = torch.zeros(time+1, batch, size).cuda()
-    hmm_pytorch(x, out)
+X = torch.rand(10, 16, 5, 5).cuda()
 
-    out2 = torch.zeros(time+1, batch, size).cuda()
-    hmm_pytorch(x.flip(0).transpose(-2, -1).contiguous(), out2)
+# def fb(x):
+#     time, batch, size, _ = x.shape
+#     out = torch.zeros(time+1, batch, size).cuda()
+#     hmm_pytorch(x, out)
 
-    marginals = torch.exp(out[:-1].view(time, batch, 1, size) +
-                          out2[:-1].flip(0).view(time, batch, size, 1) +
-                          x.view(time, batch, size, size).transpose(-2, -1)
-                          - out[-1].logsumexp(-1).view(1, -1, 1, 1))
-    return out, marginals
+#     out2 = torch.zeros(time+1, batch, size).cuda()
+#     hmm_pytorch(x.flip(0).transpose(-2, -1).contiguous(), out2)
 
-with autotvm.apply_history_best('best.log'):
-    with tvm.target.create("cuda"):
-        s_mult, arg_bufs = hmm_runner_max('float32')
-        mod = tvm.build(s_mult, arg_bufs, target="cuda", target_host="llvm")
+#     marginals = torch.exp(out[:-1].view(time, batch, 1, size) +
+#                           out2[:-1].flip(0).view(time, batch, size, 1) +
+#                           x.view(time, batch, size, size).transpose(-2, -1)
+#                           - out[-1].logsumexp(-1).view(1, -1, 1, 1))
+#     return out, marginals
 
-from tvm.contrib.dlpack import to_pytorch_func
-hmm_pytorch_max = to_pytorch_func(mod)
+# with autotvm.apply_history_best('best.log'):
+#     with tvm.target.create("cuda"):
+#         s_mult, arg_bufs = hmm_runner_max('float32')
+#         mod = tvm.build(s_mult, arg_bufs, target="cuda", target_host="llvm")
 
-def fb_max(x):
-    time, batch, size, _ = x.shape
-    forward = torch.zeros(time+1, batch, size).cuda()
-    hmm_pytorch_max(x, forward)
+# from tvm.contrib.dlpack import to_pytorch_func
+# hmm_pytorch_max = to_pytorch_func(mod)
 
-    backward = torch.zeros(time+1, batch, size).cuda()
-    hmm_pytorch_max(x.flip(0).transpose(-2, -1).contiguous(), backward)
+# def fb_max(x):
+#     time, batch, size, _ = x.shape
+#     forward = torch.zeros(time+1, batch, size).cuda()
+#     hmm_pytorch_max(x, forward)
 
-    check = (forward.view(time+1, batch, size)+
-        backward.flip(0).view(time+1, batch, size))
+#     backward = torch.zeros(time+1, batch, size).cuda()
+#     hmm_pytorch_max(x.flip(0).transpose(-2, -1).contiguous(), backward)
 
-    marginals = (forward[:-1].view(time, batch, 1, size) +
-                 backward[:-1].flip(0).view(time, batch, size, 1) +
-                 x.view(time, batch, size, size).transpose(-2, -1)).transpose(-2, -1)
-    return forward, backward, marginals, check
+#     check = (forward.view(time+1, batch, size)+
+#         backward.flip(0).view(time+1, batch, size))
+
+#     marginals = (forward[:-1].view(time, batch, 1, size) +
+#                  backward[:-1].flip(0).view(time, batch, size, 1) +
+#                  x.view(time, batch, size, size).transpose(-2, -1)).transpose(-2, -1)
+#     return forward, backward, marginals, check
 
 
 if __name__ == "__main__":
@@ -333,7 +332,7 @@ if __name__ == "__main__":
     logging.getLogger('autotvm').setLevel(logging.DEBUG)
     logging.getLogger('autotvm').addHandler(logging.StreamHandler(sys.stdout))
 
-    task = autotvm.task.create(hmm_runner, args=('float32',),
+    task = autotvm.task.create("hmm", args=(512, 16, 10, 'float32',),
                                target='cuda', target_host="llvm")
 
     measure_option = autotvm.measure_option(
