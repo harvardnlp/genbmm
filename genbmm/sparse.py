@@ -587,7 +587,7 @@ class BandedMaxMul(torch.autograd.Function):
         at = BandedMatrix(a, a_lu, a_ld, -1e9)
         bt = BandedMatrix(b, b_lu, b_ld, -1e9)
 
-        _, indices2 = _genbmm.forward_band(
+        _, indices2, _ = _genbmm.forward_band(
             bt.data.contiguous(), bt.lu, bt.ld, at.data.contiguous(), at.lu, at.ld, 1
         )
 
